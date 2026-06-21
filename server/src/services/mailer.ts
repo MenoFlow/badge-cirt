@@ -49,14 +49,20 @@ export async function sendMailWithAttachments(input: {
   const transporter = createTransporter();
   const from = process.env.SMTP_FROM?.trim() || process.env.SMTP_USER?.trim();
   if (!from) throw httpError(500, "Configuration email manquante: SMTP_FROM");
+  const replyTo = process.env.SMTP_REPLY_TO?.trim() || process.env.SMTP_USER?.trim();
 
   const info = await transporter.sendMail({
     from,
+    replyTo,
     to: input.to,
     subject: input.subject,
     html: input.html,
     text: input.text,
     attachments: input.attachments,
+    priority: "normal",
+    headers: {
+      "X-Auto-Response-Suppress": "All",
+    },
   });
   return { messageId: info.messageId };
 }

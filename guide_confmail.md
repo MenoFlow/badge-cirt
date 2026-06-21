@@ -74,10 +74,10 @@ Les participants sans email seront signales comme echecs dans la popup de progre
 
 ## 6. Eviter que les emails arrivent en spam
 
-L'application envoie maintenant un objet explicite du type :
+L'application envoie maintenant un objet sobre du type :
 
 ```text
-[CIRT Badge Check] Votre badge d'accès - CIRT-000001
+[CTF / Hackathon 2026] Votre badge de participant
 ```
 
 Si les emails arrivent encore en spam, ce n'est generalement pas lie a l'objet seul. Verifie surtout :
@@ -108,6 +108,75 @@ DMARC indique aux boites mail comment verifier SPF/DKIM
 ```
 
 Avec Gmail personnel, tu ne controles pas SPF/DKIM du domaine `gmail.com`, mais Google signe normalement les emails envoyes par `smtp.gmail.com`. La reputation du compte et le comportement des destinataires restent donc importants.
+
+### Diagnostic actuel du domaine
+
+Le domaine public `badge-cirt.soozey.com` ne suffit pas a ameliorer la delivrabilite si l'expediteur reste `cirtmdg@gmail.com`.
+
+Le DNS actuel de `soozey.com` indique un SPF oriente Hostinger :
+
+```text
+v=spf1 include:_spf.mail.hostinger.com include:_spf.reach.hostinger.com ~all
+```
+
+Et DMARC est en observation :
+
+```text
+v=DMARC1; p=none
+```
+
+Donc, pour une meilleure delivrabilite, il faut choisir une strategie coherente :
+
+1. Continuer avec Gmail personnel `cirtmdg@gmail.com` : simple, mais la delivrabilite depend de la reputation du compte Gmail et Gmail peut classer les PDF en spam.
+2. Utiliser une adresse du domaine `@soozey.com` via Hostinger SMTP : plus coherent avec le SPF actuel.
+3. Utiliser Google Workspace pour `@soozey.com` : il faudra alors remplacer le SPF par une configuration incluant Google, activer DKIM Google Workspace et ajouter DMARC progressivement.
+
+La recommandation production est l'option 2 ou 3, avec une adresse expediteur du domaine officiel.
+
+## 8. Test rapide avec mail-tester.com
+
+Avant un envoi massif :
+
+1. Va sur `https://www.mail-tester.com/`.
+2. Copie l'adresse de test fournie.
+3. Cree temporairement un participant avec cette adresse email.
+4. Envoie-lui un badge depuis `Participants > Actions > Envoi badge`.
+5. Consulte le score sur mail-tester.
+
+Le rapport indiquera precisement les problemes restants : SPF, DKIM, DMARC, IP ou reputation.
+
+## 9. Configuration recommandee pour la production
+
+Evite d'envoyer les badges en masse avec une adresse `@gmail.com`.
+
+Preferer une adresse officielle du domaine, par exemple :
+
+```text
+inscription@soozey.com
+badge@soozey.com
+contact@soozey.com
+```
+
+Deux options propres :
+
+1. SMTP Hostinger avec une adresse `@soozey.com`, puisque le SPF actuel autorise deja Hostinger.
+2. Service specialise d'envoi transactionnel : Brevo, Resend, Mailgun, SendGrid.
+
+Dans tous les cas, verifier :
+
+```text
+SPF   autorise le serveur SMTP utilise
+DKIM  signe les emails du domaine expediteur
+DMARC existe et commence idealement par p=none, puis durcit apres validation
+```
+
+Pour Gmail/Google Workspace avec `@soozey.com`, il faut configurer Google Workspace, activer DKIM dans la console Google Admin, et adapter le SPF pour inclure Google.
+
+## 10. Piece jointe PDF
+
+Le badge PDF genere par l'application est tres leger lors des tests locaux, environ quelques kilo-octets par badge. Il est donc acceptable en piece jointe.
+
+Si un score mail-tester indique encore une penalite liee aux pieces jointes, la prochaine option serait de remplacer la piece jointe par un lien de telechargement public securise. Ce n'est pas active actuellement, car le besoin demande un badge en piece jointe.
 
 ## 7. Reprise apres coupure
 

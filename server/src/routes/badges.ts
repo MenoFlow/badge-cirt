@@ -125,8 +125,8 @@ async function sendParticipantBadge(participantId: string, options: { skipAlread
 
   try {
     const pdf = await createBadgePdf([participant.id]);
-    const eventTitle = "CTF / HACKATHON";
-    const subject = `⚠️ Votre badge d'accès – ${eventTitle} - 2026`;
+    const eventTitle = "CTF / Hackathon";
+    const subject = `[CTF / Hackathon 2026] Votre badge de participant`;
     const { messageId } = await sendMailWithAttachments({
       to: participant.email,
       subject,
