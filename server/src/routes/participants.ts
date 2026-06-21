@@ -173,13 +173,13 @@ participantsRouter.get("/:id", asyncHandler(async (req, res) => {
   res.json(serializeParticipant(participant));
 }));
 
-participantsRouter.patch("/:id", requireRole("ADMIN", "SUPERVISOR"), asyncHandler(async (req, res) => {
+participantsRouter.patch("/:id", requireRole("ADMIN"), asyncHandler(async (req, res) => {
   const input = cleanParticipantInput(parseBody(participantSchema.partial(), req.body));
   const participant = await prisma.participant.update({ where: { id: req.params.id }, data: input });
   res.json(serializeParticipant(participant));
 }));
 
-participantsRouter.delete("/all", requireRole("ADMIN", "SUPERVISOR"), asyncHandler<AuthedRequest>(async (req, res) => {
+participantsRouter.delete("/all", requireRole("ADMIN"), asyncHandler<AuthedRequest>(async (req, res) => {
   const participants = await prisma.participant.findMany({ select: { id: true, photoPath: true } });
   const count = participants.length;
 
@@ -204,7 +204,7 @@ participantsRouter.delete("/all", requireRole("ADMIN", "SUPERVISOR"), asyncHandl
   res.json({ deleted: count });
 }));
 
-participantsRouter.delete("/:id", requireRole("ADMIN", "SUPERVISOR"), asyncHandler<AuthedRequest>(async (req, res) => {
+participantsRouter.delete("/:id", requireRole("ADMIN"), asyncHandler<AuthedRequest>(async (req, res) => {
   const participant = await prisma.participant.findUnique({ where: { id: req.params.id } });
   if (!participant) throw httpError(404, "Participant introuvable");
 
@@ -229,7 +229,7 @@ participantsRouter.delete("/:id", requireRole("ADMIN", "SUPERVISOR"), asyncHandl
   res.status(204).end();
 }));
 
-participantsRouter.post("/quick-add", requireRole("ADMIN", "SUPERVISOR", "SCAN_AGENT"), asyncHandler(async (req, res) => {
+participantsRouter.post("/quick-add", requireRole("ADMIN"), asyncHandler(async (req, res) => {
   const schema = z.object({ participants: z.array(participantSchema).min(1).optional() }).and(participantSchema.partial());
   const body = parseBody(schema, req.body);
   const rows = body.participants?.length ? body.participants : [body as z.infer<typeof participantSchema>];
@@ -252,7 +252,7 @@ participantsRouter.post("/quick-add", requireRole("ADMIN", "SUPERVISOR", "SCAN_A
   res.status(201).json(created.length === 1 ? created[0] : { items: created });
 }));
 
-participantsRouter.post("/import/preview", requireRole("ADMIN", "SUPERVISOR"), upload.single("file"), asyncHandler(async (req, res) => {
+participantsRouter.post("/import/preview", requireRole("ADMIN"), upload.single("file"), asyncHandler(async (req, res) => {
   if (!req.file) throw httpError(400, "Fichier requis");
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(req.file.buffer as any);
@@ -305,7 +305,7 @@ participantsRouter.post("/import/preview", requireRole("ADMIN", "SUPERVISOR"), u
   res.json({ rows, duplicates });
 }));
 
-participantsRouter.post("/import/commit", requireRole("ADMIN", "SUPERVISOR"), asyncHandler<AuthedRequest>(async (req, res) => {
+participantsRouter.post("/import/commit", requireRole("ADMIN"), asyncHandler<AuthedRequest>(async (req, res) => {
   const schema = z.object({ rows: z.array(participantSchema), sourceCategory: z.string().default("Import"), fileName: z.string().default("import.xlsx") });
   const input = parseBody(schema, req.body);
   let importedRows = 0;
@@ -349,7 +349,7 @@ participantsRouter.post("/:id/photo", requireRole("ADMIN", "SUPERVISOR", "SCAN_A
   res.json(serializeParticipant(participant));
 }));
 
-participantsRouter.delete("/:id/photo", requireRole("ADMIN", "SUPERVISOR"), asyncHandler<AuthedRequest>(async (req, res) => {
+participantsRouter.delete("/:id/photo", requireRole("ADMIN"), asyncHandler<AuthedRequest>(async (req, res) => {
   const participant = await prisma.participant.update({ where: { id: req.params.id }, data: { photoPath: null } });
   await prisma.auditLog.create({ data: { userId: req.user!.id, action: "PHOTO_DELETE", entityType: "Participant", entityId: participant.id } });
   res.json(serializeParticipant(participant));

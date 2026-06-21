@@ -95,7 +95,7 @@ En localhost, les emails peuvent aller en spam meme si le SMTP fonctionne. Pour 
 
 1. Envoie d'abord a une seule adresse de test, idealement une adresse Gmail personnelle.
 2. Ouvre le spam, clique sur `Non spam`, puis reessaie un nouvel envoi.
-3. Ajoute `cirtmdg@gmail.com` dans les contacts du destinataire de test.
+3. Ajoute `cirt_badge@soozey.com` dans les contacts du destinataire de test.
 4. N'envoie pas tout le lot pendant les tests, car un gros volume depuis un compte Gmail neuf augmente le risque de spam.
 5. Garde l'email simple : pas de lien localhost, pas de texte trop court, une piece jointe PDF claire.
 
@@ -111,7 +111,7 @@ Avec Gmail personnel, tu ne controles pas SPF/DKIM du domaine `gmail.com`, mais 
 
 ### Diagnostic actuel du domaine
 
-Le domaine public `badge-cirt.soozey.com` ne suffit pas a ameliorer la delivrabilite si l'expediteur reste `cirtmdg@gmail.com`.
+Le domaine public `badge-cirt.soozey.com` ne suffit pas a ameliorer la delivrabilite si l'expediteur reste `cirt_badge@soozey.com`.
 
 Le DNS actuel de `soozey.com` indique un SPF oriente Hostinger :
 
@@ -127,7 +127,7 @@ v=DMARC1; p=none
 
 Donc, pour une meilleure delivrabilite, il faut choisir une strategie coherente :
 
-1. Continuer avec Gmail personnel `cirtmdg@gmail.com` : simple, mais la delivrabilite depend de la reputation du compte Gmail et Gmail peut classer les PDF en spam.
+1. Continuer avec Gmail personnel `cirt_badge@soozey.com` : simple, mais la delivrabilite depend de la reputation du compte Gmail et Gmail peut classer les PDF en spam.
 2. Utiliser une adresse du domaine `@soozey.com` via Hostinger SMTP : plus coherent avec le SPF actuel.
 3. Utiliser Google Workspace pour `@soozey.com` : il faudra alors remplacer le SPF par une configuration incluant Google, activer DKIM Google Workspace et ajouter DMARC progressivement.
 

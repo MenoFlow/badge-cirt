@@ -62,14 +62,15 @@ function MovementsPage() {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="hidden md:grid grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] gap-4 px-5 py-3 text-xs uppercase tracking-widest text-muted-foreground border-b">
-          <div>Participant</div><div>Badge</div><div>Mouvement</div><div>Point</div><div>Agent</div><div>Date</div>
+        <div className="hidden md:grid grid-cols-[1.4fr_0.9fr_0.9fr_0.9fr_1fr_1fr_1fr] gap-4 px-5 py-3 text-xs uppercase tracking-widest text-muted-foreground border-b">
+          <div>Participant</div><div>Badge</div><div>Mouvement</div><div>Statut</div><div>Point</div><div>Agent</div><div>Date</div>
         </div>
         <div className="divide-y">
           {q.data?.items.map((passage) => {
             const isEntry = passage.movementType === "ENTRY";
+            const passageStatus = passage.passageStatus ?? (isEntry ? "Arrivé" : "Hors site");
             return (
-              <div key={passage.id} className="px-5 py-4 grid md:grid-cols-[1.5fr_1fr_1fr_1fr_1fr_1fr] gap-2 md:gap-4 items-center">
+              <div key={passage.id} className="px-5 py-4 grid md:grid-cols-[1.4fr_0.9fr_0.9fr_0.9fr_1fr_1fr_1fr] gap-2 md:gap-4 items-center">
                 <div className="min-w-0">
                   <div className="font-medium truncate">{passage.participant?.fullName ?? "Participant supprimé"}</div>
                   <div className="text-xs text-muted-foreground truncate">{passage.participant?.sourceCategory ?? "—"} · {passage.participant?.organization ?? "—"}</div>
@@ -82,6 +83,18 @@ function MovementsPage() {
                   )}>
                     {isEntry ? <ArrowDownLeft className="size-3" /> : <ArrowUpRight className="size-3" />}
                     {isEntry ? "Entrée" : "Sortie"}
+                  </span>
+                </div>
+                <div>
+                  <span className={cn(
+                    "inline-flex text-[10px] uppercase tracking-widest px-2 py-1 rounded font-bold",
+                    passageStatus === "Hors site"
+                      ? "bg-amber-100 text-amber-700"
+                      : passageStatus === "Rentré"
+                        ? "bg-sky-100 text-sky-700"
+                        : "bg-iris-lime/40 text-primary-deep",
+                  )}>
+                    {passageStatus}
                   </span>
                 </div>
                 <div className="text-sm truncate">{passage.gateName ?? "—"}</div>

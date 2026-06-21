@@ -5,7 +5,7 @@ import { asyncHandler, parseBody } from "../lib/api.js";
 import { requireAuth, requireRole, type AuthedRequest } from "../middleware/auth.js";
 
 export const passagesRouter = Router();
-passagesRouter.use(requireAuth, requireRole("ADMIN", "SUPERVISOR"));
+passagesRouter.use(requireAuth, requireRole("ADMIN", "SUPERVISOR", "SCAN_AGENT"));
 
 passagesRouter.get("/", asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page ?? 1));
@@ -43,8 +43,26 @@ passagesRouter.get("/", asyncHandler(async (req, res) => {
       include: { participant: true, scannedBy: true },
     }),
   ]);
+  const itemsWithStatus = await Promise.all(items.map(async ({ scannedBy, ...passage }) => {
+    const previousEntries = passage.movementType === "ENTRY"
+      ? await prisma.passage.count({
+        where: {
+          participantId: passage.participantId,
+          movementType: "ENTRY",
+          isCancelled: false,
+          scannedAt: { lt: passage.scannedAt },
+        },
+      })
+      : 0;
+    return {
+      ...passage,
+      scannedByName: scannedBy.name,
+      passageStatus: passage.movementType === "EXIT" ? "Hors site" : previousEntries > 0 ? "Rentré" : "Arrivé",
+    };
+  }));
+
   res.json({
-    items: items.map(({ scannedBy, ...passage }) => ({ ...passage, scannedByName: scannedBy.name })),
+    items: itemsWithStatus,
     total,
     page,
     pageSize,

@@ -75,8 +75,9 @@ function ParticipantsPage() {
   const canCreateLastMinute = canAccess(user?.role, "participants.createLastMinute");
   const canDeleteParticipants = canAccess(user?.role, "participants.delete");
   const canViewBadges = canAccess(user?.role, "badges.view");
-  const canSendBadge = canViewBadges;
-  const canUseParticipantActions = canViewBadges || canDeleteParticipants || canSendBadge;
+  const canSendBadge = user?.role === "ADMIN";
+  const showDisabledActions = user?.role === "SCAN_AGENT";
+  const canUseParticipantActions = canViewBadges || canDeleteParticipants || canSendBadge || showDisabledActions;
   const rowGridClass = canUseParticipantActions
     ? "md:grid-cols-[1.2fr_2fr_1fr_1fr_1.4fr_1fr_1fr_auto]"
     : "md:grid-cols-[1.2fr_2fr_1fr_1fr_1.4fr_1fr_1fr]";
@@ -192,59 +193,65 @@ function ParticipantsPage() {
               </div>
               {canUseParticipantActions && (
                 <div className="md:flex md:justify-end">
-                  <AlertDialog>
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button size="sm" variant="outline">
-                          <MoreHorizontal className="size-4 mr-1" />Actions
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {canViewBadges && (
-                          <DropdownMenuItem asChild>
-                            <Link to="/badges" search={{ id: p.id } as any}>
-                              <IdCard className="size-4 mr-2" />Badge
-                            </Link>
-                          </DropdownMenuItem>
-                        )}
-                        {canSendBadge && (
-                          <DropdownMenuItem
-                            disabled={sendBadgeMutation.isPending}
-                            onSelect={() => sendBadgeMutation.mutate(p.id)}
-                          >
-                            <Mail className="size-4 mr-2" />Envoi badge
-                          </DropdownMenuItem>
-                        )}
-                        {canDeleteParticipants && (
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(event) => event.preventDefault()}>
-                              <Trash2 className="size-4 mr-2" />Supprimer
+                  {showDisabledActions ? (
+                    <Button size="sm" variant="outline" disabled>
+                      <MoreHorizontal className="size-4 mr-1" />Actions
+                    </Button>
+                  ) : (
+                    <AlertDialog>
+                      <DropdownMenu modal={false}>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <MoreHorizontal className="size-4 mr-1" />Actions
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {canViewBadges && (
+                            <DropdownMenuItem asChild>
+                              <Link to="/badges" search={{ id: p.id } as any}>
+                                <IdCard className="size-4 mr-2" />Badge
+                              </Link>
                             </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    {canDeleteParticipants && (
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Supprimer ce participant ?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {p.fullName} et son historique de passages associé seront supprimés définitivement.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annuler</AlertDialogCancel>
-                          <AlertDialogAction
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            disabled={deleteMutation.isPending}
-                            onClick={() => deleteMutation.mutate(p.id)}
-                          >
-                            Supprimer
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    )}
-                  </AlertDialog>
+                          )}
+                          {canSendBadge && (
+                            <DropdownMenuItem
+                              disabled={sendBadgeMutation.isPending}
+                              onSelect={() => sendBadgeMutation.mutate(p.id)}
+                            >
+                              <Mail className="size-4 mr-2" />Envoi badge
+                            </DropdownMenuItem>
+                          )}
+                          {canDeleteParticipants && (
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(event) => event.preventDefault()}>
+                                <Trash2 className="size-4 mr-2" />Supprimer
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {canDeleteParticipants && (
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Supprimer ce participant ?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {p.fullName} et son historique de passages associé seront supprimés définitivement.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              disabled={deleteMutation.isPending}
+                              onClick={() => deleteMutation.mutate(p.id)}
+                            >
+                              Supprimer
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      )}
+                    </AlertDialog>
+                  )}
                 </div>
               )}
             </div>

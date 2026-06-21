@@ -60,6 +60,7 @@ export interface Passage {
   scannedAt: string;
   scannedByUserId: string;
   scannedByName?: string;
+  passageStatus?: "Arrivé" | "Rentré" | "Hors site" | "Pas arrivé";
   scanMethod: ScanMethod;
   gateName: GateName | null;
   deviceName: string | null;

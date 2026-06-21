@@ -36,7 +36,7 @@ badgesRouter.get("/batch/group/:groupName/pdf", asyncHandler(async (req, res) =>
   res.send(pdf);
 }));
 
-badgesRouter.post("/email/group/:groupName", asyncHandler(async (req, res) => {
+badgesRouter.post("/email/group/:groupName", requireRole("ADMIN"), asyncHandler(async (req, res) => {
   const participants = await prisma.participant.findMany({
     where: { isActive: true, groupName: req.params.groupName },
     orderBy: { badgeCode: "asc" },
@@ -69,7 +69,7 @@ badgesRouter.get("/:participantId/pdf", asyncHandler(async (req, res) => {
   res.send(pdf);
 }));
 
-badgesRouter.post("/:participantId/email", asyncHandler(async (req, res) => {
+badgesRouter.post("/:participantId/email", requireRole("ADMIN"), asyncHandler(async (req, res) => {
   res.json(await sendParticipantBadge(req.params.participantId, { skipAlreadySent: req.query.force !== "true" }));
 }));
 

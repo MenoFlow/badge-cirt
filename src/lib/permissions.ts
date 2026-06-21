@@ -15,13 +15,13 @@ export type Permission =
   | "users.manage";
 
 const PERMISSIONS: Record<Permission, UserRole[]> = {
-  "dashboard.view": ["ADMIN", "SUPERVISOR"],
+  "dashboard.view": ["ADMIN", "SUPERVISOR", "SCAN_AGENT", "REPORT_AGENT"],
   "scan.use": ["ADMIN", "SUPERVISOR", "SCAN_AGENT"],
-  "movements.view": ["ADMIN", "SUPERVISOR"],
+  "movements.view": ["ADMIN", "SUPERVISOR", "SCAN_AGENT"],
   "participants.view": ["ADMIN", "SUPERVISOR", "SCAN_AGENT"],
-  "participants.createLastMinute": ["ADMIN", "SUPERVISOR", "SCAN_AGENT"],
-  "participants.delete": ["ADMIN", "SUPERVISOR"],
-  "participants.import": ["ADMIN", "SUPERVISOR"],
+  "participants.createLastMinute": ["ADMIN"],
+  "participants.delete": ["ADMIN"],
+  "participants.import": ["ADMIN"],
   "badges.view": ["ADMIN", "SUPERVISOR", "REPORT_AGENT"],
   "badges.configure": ["ADMIN"],
   "reports.view": ["ADMIN", "SUPERVISOR", "REPORT_AGENT"],

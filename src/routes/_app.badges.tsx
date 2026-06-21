@@ -188,6 +188,7 @@ function BadgesPage() {
     return list.data.items.find((p) => p.id === id) ?? list.data.items[0] ?? null;
   }, [list.data, id]);
   const canConfigureBadges = canAccess(user?.role, "badges.configure");
+  const canSendBadgeEmails = user?.role === "ADMIN";
 
   return (
     <div className="space-y-6">
@@ -201,8 +202,8 @@ function BadgesPage() {
             <>
               <input ref={templateInputRef} type="file" accept="application/pdf" className="hidden" onChange={(event) => uploadTemplate(event.target.files?.[0])} />
               <input ref={logosInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple className="hidden" onChange={(event) => uploadLogos(event.target.files)} />
-              <Button variant="outline" onClick={() => templateInputRef.current?.click()}><UploadCloud className="size-4 mr-2" />Gabarit</Button>
-              <Button variant="outline" onClick={() => logosInputRef.current?.click()}><UploadCloud className="size-4 mr-2" />Logos</Button>
+              {/* <Button variant="outline" onClick={() => templateInputRef.current?.click()}><UploadCloud className="size-4 mr-2" />Gabarit</Button> */}
+              {/* <Button variant="outline" onClick={() => logosInputRef.current?.click()}><UploadCloud className="size-4 mr-2" />Logos</Button> */}
             </>
           )}
           <Button className="bg-deep" onClick={() => download("/badges/batch/pdf", "badges-cirt.pdf")}><Layers className="size-4 mr-2" />Tous les badges</Button>
@@ -216,26 +217,28 @@ function BadgesPage() {
               <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Rechercher un participant…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} className="pl-9" />
             </div>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="outline" disabled={!list.data?.total || mailSending}>
-                  <Send className="size-4 mr-2" />Envoyer tous
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Envoyer tous les badges par email ?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Les badges seront envoyés aux participants qui ont une adresse email renseignée, même si un badge a déjà été envoyé auparavant. Pour reprendre après une coupure sans doublons, utilisez plutôt Continuer l'envoi.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annuler</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => sendAllBadgesByEmail()}>Confirmer l'envoi</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            {readSavedMailResults().some((result) => result.ok) && (
+            {canSendBadgeEmails && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" disabled={!list.data?.total || mailSending}>
+                    <Send className="size-4 mr-2" />Envoyer tous
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Envoyer tous les badges par email ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Les badges seront envoyés aux participants qui ont une adresse email renseignée, même si un badge a déjà été envoyé auparavant. Pour reprendre après une coupure sans doublons, utilisez plutôt Continuer l'envoi.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => sendAllBadgesByEmail()}>Confirmer l'envoi</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            {canSendBadgeEmails && readSavedMailResults().some((result) => result.ok) && (
               <Button variant="secondary" disabled={mailSending} onClick={() => sendAllBadgesByEmail({ resume: true })}>
                 Continuer l'envoi
               </Button>
@@ -280,9 +283,11 @@ function BadgesPage() {
                 <Button className="bg-deep" onClick={() => download(`/badges/${selected.id}/pdf`, `${selected.badgeCode}.pdf`)}>
                   <Download className="size-4 mr-2" /> PDF individuel
                 </Button>
-                <Button variant="outline" disabled={!selected.groupName} onClick={() => selected.groupName && sendGroupBadgesByEmail(selected.groupName)}>
-                  <Mail className="size-4 mr-2" /> Envoi badge
-                </Button>
+                {canSendBadgeEmails && (
+                  <Button variant="outline" disabled={!selected.groupName} onClick={() => selected.groupName && sendGroupBadgesByEmail(selected.groupName)}>
+                    <Mail className="size-4 mr-2" /> Envoi badge
+                  </Button>
+                )}
               </div>
             </>
           ) : (
