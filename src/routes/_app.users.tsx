@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/PasswordInput";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -46,7 +47,7 @@ function UsersPage() {
       <Card className="p-5 grid lg:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-3 items-end">
         <Field label="Nom"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
         <Field label="Email"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
-        <Field label="Mot de passe"><Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
+        <Field label="Mot de passe"><PasswordInput value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} /></Field>
         <Field label="Rôle">
           <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v as UserRole })}>
             <SelectTrigger><SelectValue /></SelectTrigger>

@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/PasswordInput";
 import { toast } from "sonner";
 import { ShieldCheck, ScanLine } from "lucide-react";
 import { DEFAULT_ROUTE_BY_ROLE } from "@/lib/permissions";
@@ -99,7 +100,7 @@ function LoginPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Mot de passe</Label>
-              <Input id="password" type="password" autoComplete="current-password" required
+              <PasswordInput id="password" autoComplete="current-password" required
                 value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
           </div>

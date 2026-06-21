@@ -1,20 +1,25 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { listParticipants } from "@/services/api/participants";
+import { listParticipants, sendGroupBadgeEmails, sendParticipantBadgeEmail, type BadgeEmailResult } from "@/services/api/participants";
 import { downloadFile, http } from "@/services/api/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { BadgePreview } from "@/components/BadgePreview";
 import { useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { canAccess } from "@/lib/permissions";
-import { Search, Download, UploadCloud, Layers } from "lucide-react";
+import { Search, Download, UploadCloud, Layers, Mail, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { motion } from "framer-motion";
 
 const search = z.object({ id: z.string().optional() });
+const MAIL_RESUME_KEY = "cirt.badge.email.results.v1";
 
 export const Route = createFileRoute("/_app/badges")({
   head: () => ({ meta: [{ title: "Badges · CIRT" }] }),
@@ -28,6 +33,10 @@ function BadgesPage() {
   const navigate = useNavigate({ from: "/badges" } as any);
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const [mailDialogOpen, setMailDialogOpen] = useState(false);
+  const [mailProgress, setMailProgress] = useState({ done: 0, total: 0, sent: 0, skipped: 0, failed: 0 });
+  const [mailResults, setMailResults] = useState<BadgeEmailResult[]>([]);
+  const [mailSending, setMailSending] = useState(false);
   const templateInputRef = useRef<HTMLInputElement | null>(null);
   const logosInputRef = useRef<HTMLInputElement | null>(null);
   const list = useQuery({ queryKey: ["participants-badges", q, page], queryFn: () => listParticipants({ search: q, page, pageSize: 5 }) });
@@ -69,6 +78,111 @@ function BadgesPage() {
     }
   }
 
+  async function loadAllParticipants() {
+    const all = [];
+    let currentPage = 1;
+    let totalPages = 1;
+    do {
+      const pageResult = await listParticipants({ page: currentPage, pageSize: 100 });
+      all.push(...pageResult.items);
+      totalPages = Math.max(1, Math.ceil(pageResult.total / pageResult.pageSize));
+      currentPage += 1;
+    } while (currentPage <= totalPages);
+    return all;
+  }
+
+  function readSavedMailResults() {
+    if (typeof window === "undefined") return [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem(MAIL_RESUME_KEY) ?? "[]");
+      return Array.isArray(parsed) ? parsed as BadgeEmailResult[] : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveMailResults(results: BadgeEmailResult[]) {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(MAIL_RESUME_KEY, JSON.stringify(results));
+  }
+
+  function resetSavedMailResults() {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem(MAIL_RESUME_KEY);
+  }
+
+  async function sendAllBadgesByEmail({ resume = false }: { resume?: boolean } = {}) {
+    setMailDialogOpen(true);
+    setMailSending(true);
+    const savedResults = resume ? readSavedMailResults().filter((result) => result.ok) : [];
+    if (!resume) resetSavedMailResults();
+    const results: BadgeEmailResult[] = [...savedResults];
+    const successfulIds = new Set(savedResults.filter((result) => result.ok).map((result) => result.participantId));
+    setMailResults(results);
+    setMailProgress({
+      done: savedResults.length,
+      total: list.data?.total ?? 0,
+      sent: savedResults.filter((result) => result.ok && !result.skipped).length,
+      skipped: savedResults.filter((result) => result.ok && result.skipped).length,
+      failed: savedResults.filter((result) => !result.ok).length,
+    });
+    try {
+      const participants = await loadAllParticipants();
+      const pending = participants.filter((participant) => !successfulIds.has(participant.id));
+      setMailProgress((current) => ({ ...current, total: participants.length }));
+
+      for (const participant of pending) {
+        try {
+          const result = await sendParticipantBadgeEmail(participant.id);
+          results.push(result);
+          saveMailResults(results);
+          setMailProgress((current) => ({
+            done: current.done + 1,
+            total: current.total,
+            sent: current.sent + (result.ok && !result.skipped ? 1 : 0),
+            skipped: current.skipped + (result.ok && result.skipped ? 1 : 0),
+            failed: current.failed + (result.ok ? 0 : 1),
+          }));
+        } catch (error: any) {
+          results.push({
+            ok: false,
+            participantId: participant.id,
+            badgeCode: participant.badgeCode,
+            fullName: participant.fullName,
+            error: error?.message ?? "Envoi impossible",
+          });
+          saveMailResults(results);
+          setMailProgress((current) => ({
+            ...current,
+            done: current.done + 1,
+            failed: current.failed + 1,
+          }));
+        }
+        setMailResults([...results]);
+      }
+
+      if (results.some((result) => !result.ok)) {
+        toast.error("Envoi terminé avec erreurs", { description: `${results.filter((result) => result.ok && !result.skipped).length} envoyé(s), ${results.filter((result) => result.ok && result.skipped).length} déjà envoyé(s), ${results.filter((result) => !result.ok).length} échec(s)` });
+      } else {
+        toast.success("Tous les badges ont été envoyés");
+      }
+    } catch (error: any) {
+      toast.error("Envoi global impossible", { description: error?.message ?? "Vérifiez la configuration email." });
+    } finally {
+      setMailSending(false);
+    }
+  }
+
+  async function sendGroupBadgesByEmail(groupName: string) {
+    try {
+      const result = await sendGroupBadgeEmails(groupName);
+      if (result.failed) toast.error("Envoi groupe terminé avec erreurs", { description: `${result.sent} envoyé(s), ${result.failed} échec(s)` });
+      else toast.success("Badges du groupe envoyés", { description: `${result.sent} email(s)` });
+    } catch (error: any) {
+      toast.error("Envoi groupe impossible", { description: error?.message ?? "Vérifiez la configuration email." });
+    }
+  }
+
   const selected = useMemo(() => {
     if (!list.data) return null;
     return list.data.items.find((p) => p.id === id) ?? list.data.items[0] ?? null;
@@ -97,11 +211,35 @@ function BadgesPage() {
 
       <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] gap-6 items-start">
         <Card className="overflow-hidden min-w-0">
-          <div className="p-4 border-b">
+          <div className="grid gap-2 border-b p-4 sm:grid-cols-[minmax(0,1fr)_auto]">
             <div className="relative">
               <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Rechercher un participant…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} className="pl-9" />
             </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" disabled={!list.data?.total || mailSending}>
+                  <Send className="size-4 mr-2" />Envoyer tous
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Envoyer tous les badges par email ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Les badges seront envoyés aux participants qui ont une adresse email renseignée. Les participants sans email seront marqués en échec.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => sendAllBadgesByEmail()}>Confirmer l'envoi</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            {readSavedMailResults().some((result) => result.ok) && (
+              <Button variant="secondary" disabled={mailSending} onClick={() => sendAllBadgesByEmail({ resume: true })}>
+                Continuer l'envoi
+              </Button>
+            )}
           </div>
           <div className="divide-y max-h-[360px] lg:max-h-[640px] overflow-y-auto">
             {list.data?.items.map((p, i) => (
@@ -142,8 +280,8 @@ function BadgesPage() {
                 <Button className="bg-deep" onClick={() => download(`/badges/${selected.id}/pdf`, `${selected.badgeCode}.pdf`)}>
                   <Download className="size-4 mr-2" /> PDF individuel
                 </Button>
-                <Button variant="outline" disabled={!selected.groupName} onClick={() => selected.groupName && download(`/badges/batch/group/${encodeURIComponent(selected.groupName)}/pdf`, `badges-${selected.groupName}.pdf`)}>
-                  PDF du groupe
+                <Button variant="outline" disabled={!selected.groupName} onClick={() => selected.groupName && sendGroupBadgesByEmail(selected.groupName)}>
+                  <Mail className="size-4 mr-2" /> Envoi badge
                 </Button>
               </div>
             </>
@@ -152,6 +290,77 @@ function BadgesPage() {
           )}
         </div>
       </div>
+
+      {mailDialogOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 px-4">
+          <div className="relative w-full max-w-lg rounded-xl border bg-background p-6 shadow-lg">
+            {!mailSending && (
+              <button
+                type="button"
+                className="absolute right-4 top-4 rounded-sm text-muted-foreground hover:text-foreground"
+                onClick={() => setMailDialogOpen(false)}
+                aria-label="Fermer"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+            <div>
+              <h2 className="text-lg font-semibold leading-none tracking-tight">Envoi des badges</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {mailSending ? "Envoi en cours, participant par participant." : "Envoi terminé."}
+              </p>
+            </div>
+            <div className="mt-4 space-y-4">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-primary/20">
+                <div
+                  className="h-full bg-primary transition-all"
+                  style={{ width: `${mailProgress.total ? Math.round((mailProgress.done / mailProgress.total) * 100) : 0}%` }}
+                />
+              </div>
+            <div className="grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-4">
+              <div className="rounded-lg bg-muted p-2">
+                <div className="font-display text-lg font-bold">{mailProgress.done}/{mailProgress.total}</div>
+                <div className="text-xs text-muted-foreground">Traités</div>
+              </div>
+              <div className="rounded-lg bg-iris-lime/30 p-2 text-primary-deep">
+                <div className="font-display text-lg font-bold">{mailProgress.sent}</div>
+                <div className="text-xs">Envoyés</div>
+              </div>
+              <div className="rounded-lg bg-muted p-2">
+                <div className="font-display text-lg font-bold">{mailProgress.skipped}</div>
+                <div className="text-xs text-muted-foreground">Déjà envoyés</div>
+              </div>
+              <div className="rounded-lg bg-destructive/10 p-2 text-destructive">
+                <div className="font-display text-lg font-bold">{mailProgress.failed}</div>
+                <div className="text-xs">Échecs</div>
+              </div>
+            </div>
+            {mailResults.some((result) => !result.ok) && (
+              <div className="max-h-40 overflow-y-auto rounded-lg border text-xs">
+                {mailResults.filter((result) => !result.ok).map((result) => (
+                  <div key={result.participantId} className="border-b px-3 py-2 last:border-b-0">
+                    <div className="font-medium">{result.fullName} · {result.badgeCode}</div>
+                    <div className="text-destructive">{result.error}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!mailSending && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {mailResults.some((result) => !result.ok) && (
+                  <Button variant="outline" onClick={() => sendAllBadgesByEmail({ resume: true })}>
+                    Continuer l'envoi
+                  </Button>
+                )}
+                <Button className="w-full" onClick={() => setMailDialogOpen(false)}>
+                  Fermer
+                </Button>
+              </div>
+            )}
+          </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

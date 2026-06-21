@@ -96,3 +96,23 @@ export async function uploadPublicParticipantPhoto(qrToken: string, file: File):
   form.append("photo", file);
   return http<Participant>(`/public/badge/${qrToken}/photo`, { method: "POST", body: form });
 }
+
+export interface BadgeEmailResult {
+  ok: boolean;
+  skipped?: boolean;
+  participantId: string;
+  badgeCode: string;
+  fullName: string;
+  email?: string;
+  error?: string;
+  message?: string;
+  sentAt?: string;
+}
+
+export async function sendParticipantBadgeEmail(id: string): Promise<BadgeEmailResult> {
+  return http<BadgeEmailResult>(`/badges/${id}/email`, { method: "POST" });
+}
+
+export async function sendGroupBadgeEmails(groupName: string): Promise<{ sent: number; failed: number; results: BadgeEmailResult[] }> {
+  return http(`/badges/email/group/${encodeURIComponent(groupName)}`, { method: "POST" });
+}

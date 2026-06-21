@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { deleteAllParticipants, deleteParticipant, listParticipants } from "@/services/api/participants";
+import { deleteAllParticipants, deleteParticipant, listParticipants, sendParticipantBadgeEmail } from "@/services/api/participants";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, IdCard, ChevronLeft, ChevronRight, Trash2, MoreHorizontal } from "lucide-react";
+import { Search, IdCard, ChevronLeft, ChevronRight, Trash2, MoreHorizontal, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { canAccess } from "@/lib/permissions";
@@ -62,12 +62,21 @@ function ParticipantsPage() {
     },
     onError: (error: any) => toast.error(error?.message ?? "Suppression impossible"),
   });
+  const sendBadgeMutation = useMutation({
+    mutationFn: sendParticipantBadgeEmail,
+    onSuccess: (result) => {
+      if (result.ok) toast.success("Badge envoyé", { description: `${result.fullName} · ${result.email}` });
+      else toast.error("Badge non envoyé", { description: `${result.fullName} · ${result.error}` });
+    },
+    onError: (error: any) => toast.error("Envoi impossible", { description: error?.message ?? "Vérifiez la configuration email." }),
+  });
 
   const totalPages = q.data ? Math.max(1, Math.ceil(q.data.total / q.data.pageSize)) : 1;
   const canCreateLastMinute = canAccess(user?.role, "participants.createLastMinute");
   const canDeleteParticipants = canAccess(user?.role, "participants.delete");
   const canViewBadges = canAccess(user?.role, "badges.view");
-  const canUseParticipantActions = canViewBadges || canDeleteParticipants;
+  const canSendBadge = canViewBadges;
+  const canUseParticipantActions = canViewBadges || canDeleteParticipants || canSendBadge;
   const rowGridClass = canUseParticipantActions
     ? "md:grid-cols-[1.2fr_2fr_1fr_1fr_1.4fr_1fr_1fr_auto]"
     : "md:grid-cols-[1.2fr_2fr_1fr_1fr_1.4fr_1fr_1fr]";
@@ -196,6 +205,14 @@ function ParticipantsPage() {
                             <Link to="/badges" search={{ id: p.id } as any}>
                               <IdCard className="size-4 mr-2" />Badge
                             </Link>
+                          </DropdownMenuItem>
+                        )}
+                        {canSendBadge && (
+                          <DropdownMenuItem
+                            disabled={sendBadgeMutation.isPending}
+                            onSelect={() => sendBadgeMutation.mutate(p.id)}
+                          >
+                            <Mail className="size-4 mr-2" />Envoi badge
                           </DropdownMenuItem>
                         )}
                         {canDeleteParticipants && (

@@ -2,8 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/PasswordInput";
 import { bootstrap, changePassword, login } from "@/services/api/auth";
 import { toast } from "sonner";
 
@@ -54,7 +54,7 @@ function BootstrapPage() {
             </div>
             <div className="space-y-1.5">
               <Label>Nouveau mot de passe administrateur</Label>
-              <Input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+              <PasswordInput value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
             </div>
             <Button disabled={busy} className="w-full bg-deep" onClick={finish}>Clôturer le bootstrap</Button>
           </>
