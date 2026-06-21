@@ -109,10 +109,12 @@ export interface BadgeEmailResult {
   sentAt?: string;
 }
 
-export async function sendParticipantBadgeEmail(id: string): Promise<BadgeEmailResult> {
-  return http<BadgeEmailResult>(`/badges/${id}/email`, { method: "POST" });
+export async function sendParticipantBadgeEmail(id: string, options: { force?: boolean } = {}): Promise<BadgeEmailResult> {
+  const suffix = options.force ? "?force=true" : "";
+  return http<BadgeEmailResult>(`/badges/${id}/email${suffix}`, { method: "POST" });
 }
 
-export async function sendGroupBadgeEmails(groupName: string): Promise<{ sent: number; failed: number; results: BadgeEmailResult[] }> {
-  return http(`/badges/email/group/${encodeURIComponent(groupName)}`, { method: "POST" });
+export async function sendGroupBadgeEmails(groupName: string, options: { force?: boolean } = {}): Promise<{ sent: number; failed: number; results: BadgeEmailResult[] }> {
+  const suffix = options.force ? "?force=true" : "";
+  return http(`/badges/email/group/${encodeURIComponent(groupName)}${suffix}`, { method: "POST" });
 }

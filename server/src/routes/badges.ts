@@ -125,29 +125,39 @@ async function sendParticipantBadge(participantId: string, options: { skipAlread
 
   try {
     const pdf = await createBadgePdf([participant.id]);
-    const eventName = process.env.EVENT_NAME ?? "CIRT Badge Check";
+    const eventTitle = "CTF / HACKATHON";
+    const subject = `⚠️ Votre badge d'accès – ${eventTitle} - 2026`;
     const { messageId } = await sendMailWithAttachments({
       to: participant.email,
-      subject: `[${eventName}] Votre badge d'accès - ${participant.badgeCode}`,
+      subject,
       text: [
         `Bonjour ${participant.fullName},`,
         "",
-        `Votre badge d'accès ${eventName} est disponible en pièce jointe.`,
-        `Badge ID : ${participant.badgeCode}`,
+        `Félicitations pour votre sélection au ${eventTitle} !`,
         "",
-        "Présentez ce badge à l'entrée de l'évènement. Si vous n'êtes pas concerné par cet email, vous pouvez l'ignorer.",
+        "Vous trouverez votre badge de participant en pièce jointe. Merci de le présenter à l’entrée (sur votre téléphone ou imprimé) accompagné d'une pièce d'identité.",
         "",
-        `Cordialement,`,
-        eventName,
+        "Rappel des informations clés :",
+        "",
+        "Lieu : Novotel Convention & Spa, Antananarivo",
+        "",
+        "Dates : Lundi 22 et mardi 23 juin 2026",
+        "Heures: 08 heures",
+        "",
+        "À très vite,",
+        "",
+        "L’équipe d’organisation",
       ].filter(Boolean).join("\n"),
       html: `
         <div style="font-family:Arial,sans-serif;color:#1f1733;line-height:1.5">
           <p>Bonjour <strong>${escapeHtml(participant.fullName)}</strong>,</p>
-          <p>Votre badge d'accès <strong>${escapeHtml(eventName)}</strong> est disponible en pièce jointe.</p>
-          <p><strong>Badge ID :</strong> ${escapeHtml(participant.badgeCode)}</p>
-          <p>Présentez ce badge à l'entrée de l'évènement.</p>
-          <p style="font-size:12px;color:#6b6478">Si vous n'êtes pas concerné par cet email, vous pouvez l'ignorer.</p>
-          <p>Cordialement,<br>${escapeHtml(eventName)}</p>
+          <p>Félicitations pour votre sélection au <strong>${escapeHtml(eventTitle)}</strong> !</p>
+          <p>Vous trouverez votre badge de participant en pièce jointe. Merci de le présenter à l’entrée (sur votre téléphone ou imprimé) accompagné d'une pièce d'identité.</p>
+          <p><strong>Rappel des informations clés :</strong></p>
+          <p><strong>Lieu :</strong> Novotel Convention &amp; Spa, Antananarivo</p>
+          <p><strong>Dates :</strong> Lundi 22 et mardi 23 juin 2026<br><strong>Heures:</strong> 08 heures</p>
+          <p>À très vite,</p>
+          <p>L’équipe d’organisation</p>
         </div>
       `,
       attachments: [{

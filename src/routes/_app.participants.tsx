@@ -63,7 +63,7 @@ function ParticipantsPage() {
     onError: (error: any) => toast.error(error?.message ?? "Suppression impossible"),
   });
   const sendBadgeMutation = useMutation({
-    mutationFn: sendParticipantBadgeEmail,
+    mutationFn: (id: string) => sendParticipantBadgeEmail(id, { force: true }),
     onSuccess: (result) => {
       if (result.ok) toast.success("Badge envoyé", { description: `${result.fullName} · ${result.email}` });
       else toast.error("Badge non envoyé", { description: `${result.fullName} · ${result.error}` });

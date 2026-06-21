@@ -133,7 +133,7 @@ function BadgesPage() {
 
       for (const participant of pending) {
         try {
-          const result = await sendParticipantBadgeEmail(participant.id);
+          const result = await sendParticipantBadgeEmail(participant.id, { force: !resume });
           results.push(result);
           saveMailResults(results);
           setMailProgress((current) => ({
@@ -175,7 +175,7 @@ function BadgesPage() {
 
   async function sendGroupBadgesByEmail(groupName: string) {
     try {
-      const result = await sendGroupBadgeEmails(groupName);
+      const result = await sendGroupBadgeEmails(groupName, { force: true });
       if (result.failed) toast.error("Envoi groupe terminé avec erreurs", { description: `${result.sent} envoyé(s), ${result.failed} échec(s)` });
       else toast.success("Badges du groupe envoyés", { description: `${result.sent} email(s)` });
     } catch (error: any) {
@@ -226,7 +226,7 @@ function BadgesPage() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Envoyer tous les badges par email ?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Les badges seront envoyés aux participants qui ont une adresse email renseignée. Les participants sans email seront marqués en échec.
+                    Les badges seront envoyés aux participants qui ont une adresse email renseignée, même si un badge a déjà été envoyé auparavant. Pour reprendre après une coupure sans doublons, utilisez plutôt Continuer l'envoi.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
