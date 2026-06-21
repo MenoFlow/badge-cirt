@@ -20,13 +20,13 @@ export const Route = createFileRoute("/_app/scan")({
   component: ScanPage,
 });
 
-const GATES: GateName[] = ["Entrée principale", "Sortie principale", "Bureau de contrôle", "Zone coach", "Autre"];
+const GATES: GateName[] = ["Entrée principale", "Sortie principale", "Bureau de contrôle"];
 
 function movementHint(gate: GateName) {
   const normalized = gate.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
   if (normalized.includes("entree")) return { label: "Ce point enregistrera une entrée.", className: "bg-iris-lime/20 text-primary-deep" };
   if (normalized.includes("sortie")) return { label: "Ce point enregistrera une sortie.", className: "bg-amber-100 text-amber-700" };
-  return { label: "Ce point alterne selon le dernier passage enregistré.", className: "bg-muted text-muted-foreground" };
+  return { label: "Ce point vérifie l'identité sans enregistrer d'entrée ou de sortie.", className: "bg-sky-100 text-sky-700" };
 }
 
 function extractCode(text: string): string {
@@ -60,7 +60,11 @@ function ScanPage() {
       const r = await scanByCode(value, gate);
       setResult(r);
       if (r.ok) {
-        toast.success(r.message, { description: r.participant?.fullName });
+        toast.success(r.message, {
+          description: r.verificationOnly
+            ? `${r.participant?.fullName ?? ""} · ${statusLabel(r.currentStatus)}`
+            : r.participant?.fullName,
+        });
       } else {
         toast.error(r.message, {
           description: r.participant
@@ -169,6 +173,7 @@ function ScanPage() {
 function ResultCard({ result, onReset }: { result: ScanResult; onReset: () => void }) {
   const ok = result.ok;
   const dup = result.duplicateIgnored;
+  const verification = result.verificationOnly;
   const p = result.participant;
   const status = statusLabel(result.currentStatus ?? p?.currentStatus);
 
@@ -178,6 +183,8 @@ function ResultCard({ result, onReset }: { result: ScanResult; onReset: () => vo
         "p-4 sm:p-6 border-2 transition-all",
         dup
           ? "border-amber-300 bg-amber-50"
+          : verification
+          ? "border-sky-300 bg-sky-50"
           : ok
           ? result.movementType === "ENTRY"
             ? "border-iris-lime bg-iris-lime/10"
@@ -221,6 +228,14 @@ function ResultCard({ result, onReset }: { result: ScanResult; onReset: () => vo
                 {p.teamName ?? p.groupName} · {p.organization ?? "—"}
               </div>
             )}
+            {verification && (
+              <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                <InfoLine label="Email" value={p.email ?? "—"} />
+                <InfoLine label="Téléphone" value={p.phone ?? "—"} />
+                <InfoLine label="Organisation" value={p.organization ?? "—"} />
+                <InfoLine label="Référence" value={p.sourceReference ?? "—"} />
+              </div>
+            )}
             <div className="mt-2">
               <span className={cn(
                 "inline-block text-[10px] uppercase tracking-widest px-2 py-0.5 rounded",
@@ -237,6 +252,15 @@ function ResultCard({ result, onReset }: { result: ScanResult; onReset: () => vo
         </div>
       )}
     </Card>
+  );
+}
+
+function InfoLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded border bg-background/70 px-3 py-2">
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="mt-0.5 truncate font-medium">{value}</div>
+    </div>
   );
 }
 

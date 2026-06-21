@@ -14,7 +14,7 @@ const bodySchema = z.object({ badgeCode: z.string().min(1), gateName: z.string()
 
 scanRouter.post("/code", asyncHandler<AuthedRequest>(async (req, res) => {
   const input = parseBody(bodySchema, req.body);
-  const result = await recordScan(input.badgeCode, input.gateName, "MANUAL_BADGE_CODE", req.user!.id);
+  const result = await recordScan(input.badgeCode, input.gateName ?? "Entrée principale", "MANUAL_BADGE_CODE", req.user!.id);
   if (!result.ok) return res.status(result.status ?? 400).json(result);
   res.json(result);
 }));

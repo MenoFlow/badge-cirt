@@ -3,11 +3,23 @@ import { prisma } from "../lib/prisma.js";
 import { serializeParticipant } from "../lib/api.js";
 import { getSettings } from "./settings.js";
 
+function normalizeGate(gateName?: string) {
+  return gateName?.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim() ?? "";
+}
+
+function isKnownGate(gateName?: string) {
+  return ["entree principale", "sortie principale", "bureau de controle"].includes(normalizeGate(gateName));
+}
+
 function expectedMovementFromGate(gateName?: string): MovementType | null {
-  const normalized = gateName?.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase() ?? "";
+  const normalized = normalizeGate(gateName);
   if (normalized.includes("entree")) return "ENTRY";
   if (normalized.includes("sortie")) return "EXIT";
   return null;
+}
+
+function isIdentityVerificationGate(gateName?: string) {
+  return normalizeGate(gateName) === "bureau de controle";
 }
 
 function currentStatusFromLast(last?: Pick<Passage, "movementType"> | null) {
@@ -45,6 +57,10 @@ function validateMovement(expected: MovementType | null, last?: Pick<Passage, "m
 
 export async function recordScan(qrTokenOrCode: string, gateName: string | undefined, scanMethod: ScanMethod, agentId: string) {
   const value = qrTokenOrCode.trim();
+  if (!isKnownGate(gateName)) {
+    return { ok: false, status: 400, message: "Point de contrôle invalide" };
+  }
+
   const participant = await prisma.participant.findFirst({
     where: { OR: [{ qrToken: value }, { badgeCode: value }] },
     include: { passages: { where: { isCancelled: false }, orderBy: { scannedAt: "desc" }, take: 1 } },
@@ -55,6 +71,19 @@ export async function recordScan(qrTokenOrCode: string, gateName: string | undef
 
   const settings = await getSettings();
   const last = participant.passages[0];
+  if (isIdentityVerificationGate(gateName)) {
+    const agent = await prisma.user.findUnique({ where: { id: agentId }, select: { name: true } });
+    return {
+      ok: true,
+      verificationOnly: true,
+      participant: serializeParticipant(participant),
+      gateName,
+      agentName: agent?.name,
+      currentStatus: currentStatusFromLast(last),
+      message: "Identité vérifiée",
+    };
+  }
+
   const expectedMovement = expectedMovementFromGate(gateName);
   const isInsideDuplicateWindow = last && (Date.now() - last.scannedAt.getTime()) / 1000 < settings.duplicateScanWindowSeconds;
 

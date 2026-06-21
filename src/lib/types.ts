@@ -10,9 +10,7 @@ export type ScanMethod =
 export type GateName =
   | "Entrée principale"
   | "Sortie principale"
-  | "Bureau de contrôle"
-  | "Zone coach"
-  | "Autre";
+  | "Bureau de contrôle";
 export type UserRole = "ADMIN" | "SUPERVISOR" | "SCAN_AGENT" | "REPORT_AGENT";
 export type PresenceStatus = "ON_SITE" | "OFF_SITE" | "NOT_ARRIVED";
 
@@ -114,6 +112,7 @@ export interface Settings {
 
 export interface ScanResult {
   ok: boolean;
+  verificationOnly?: boolean;
   movementType?: MovementType;
   participant?: Participant;
   scannedAt?: string;
