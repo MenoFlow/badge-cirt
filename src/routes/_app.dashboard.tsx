@@ -73,17 +73,17 @@ function DashboardPage() {
         <StatCard index={9} label="Sorties critiques" value={s?.criticalExits ?? "—"} icon={ShieldAlert} accent="bg-destructive/15 text-destructive" />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="p-5 lg:col-span-2">
-          <div className="flex items-center justify-between">
+      <div className="grid min-w-0 lg:grid-cols-3 gap-4 sm:gap-6">
+        <Card className="min-w-0 overflow-hidden p-4 sm:p-5 lg:col-span-2">
+          <div className="flex min-w-0 items-center justify-between gap-3">
             <h2 className="font-display text-lg font-semibold">Derniers passages</h2>
-            <Link to="/participants" className="text-xs text-primary hover:underline">Voir tout</Link>
+            <Link to="/participants" className="shrink-0 text-xs text-primary hover:underline">Voir tout</Link>
           </div>
           <div className="mt-4 divide-y divide-border">
             {(passages.data ?? []).map((p) => (
-              <div key={p.id} className="py-3 flex items-center gap-3">
+              <div key={p.id} className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center">
                 <div className={cn(
-                  "size-9 rounded-lg grid place-items-center text-xs font-bold shrink-0",
+                  "row-span-2 size-9 rounded-lg grid place-items-center text-xs font-bold shrink-0 sm:row-span-1",
                   p.movementType === "ENTRY" ? "bg-iris-lime/30 text-primary-deep" : "bg-amber-100 text-amber-700"
                 )}>
                   <Activity className="size-4" />
@@ -94,9 +94,10 @@ function DashboardPage() {
                     {p.participant?.badgeCode} · {p.gateName} · {p.scannedByName}
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground shrink-0">
-                  {p.movementType === "ENTRY" ? "Entrée" : "Sortie"}
-                  <div className="text-right">{new Date(p.scannedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</div>
+                <div className="col-start-2 flex min-w-0 items-center gap-2 text-xs text-muted-foreground sm:col-start-auto sm:block sm:shrink-0 sm:text-right">
+                  <span>{p.movementType === "ENTRY" ? "Entrée" : "Sortie"}</span>
+                  <span className="text-muted-foreground/60 sm:hidden">·</span>
+                  <span>{new Date(p.scannedAt).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
                 </div>
               </div>
             ))}
@@ -106,25 +107,25 @@ function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="p-5">
-          <div className="flex items-center justify-between">
+        <Card className="min-w-0 overflow-hidden p-4 sm:p-5">
+          <div className="flex min-w-0 items-center justify-between gap-3">
             <h2 className="font-display text-lg font-semibold">Alertes</h2>
-            <Link to="/alerts" className="text-xs text-primary hover:underline">Gérer</Link>
+            <Link to="/alerts" className="shrink-0 text-xs text-primary hover:underline">Gérer</Link>
           </div>
           <div className="mt-4 space-y-3">
             {(alerts.data ?? []).map((a) => (
               <div key={a.participant.id} className={cn(
-                "rounded-xl p-3 border",
+                "min-w-0 rounded-xl p-3 border",
                 a.severity === "critical" ? "bg-destructive/5 border-destructive/30" : "bg-amber-50 border-amber-200"
               )}>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-semibold truncate">{a.participant.fullName}</div>
+                <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                  <div className="min-w-0 text-sm font-semibold leading-snug break-words sm:truncate">{a.participant.fullName}</div>
                   <span className={cn(
-                    "text-[10px] uppercase tracking-widest font-bold shrink-0 px-1.5 py-0.5 rounded",
+                    "w-fit shrink-0 rounded px-1.5 py-0.5 text-[10px] uppercase tracking-widest font-bold",
                     a.severity === "critical" ? "bg-destructive text-white" : "bg-amber-500 text-white"
                   )}>{a.severity === "critical" ? "Critique" : "Long"}</span>
                 </div>
-                <div className="mt-1 text-xs text-muted-foreground">
+                <div className="mt-1 text-xs leading-relaxed text-muted-foreground break-words">
                   Sorti depuis <span className="font-medium text-foreground">{a.minutesOut} min</span> · {a.participant.badgeCode}
                 </div>
               </div>
