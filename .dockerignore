@@ -1,0 +1,12 @@
+node_modules
+server/node_modules
+dist
+server/dist
+.git
+.env
+*.log
+.tanstack
+.nitro
+.output
+.vinxi
+uploads
