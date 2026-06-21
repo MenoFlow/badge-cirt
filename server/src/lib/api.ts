@@ -47,10 +47,3 @@ export function nullableString(value: unknown) {
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
 }
-
-export const roleOrder = {
-  SCAN_AGENT: 1,
-  REPORT_AGENT: 1,
-  SUPERVISOR: 2,
-  ADMIN: 3,
-} as const;

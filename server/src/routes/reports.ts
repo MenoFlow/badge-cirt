@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { asyncHandler } from "../lib/api.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
 import { participantReportRows } from "../services/reportRows.js";
 
 export const reportsRouter = Router();
-reportsRouter.use(requireAuth);
+reportsRouter.use(requireAuth, requireRole("ADMIN", "SUPERVISOR", "REPORT_AGENT"));
 
 const headers = ["Badge", "Nom", "Type", "Catégorie", "Groupe/Équipe", "Téléphone"];
 const widths = [70, 170, 75, 80, 105, 80];

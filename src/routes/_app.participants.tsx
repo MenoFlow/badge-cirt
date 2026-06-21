@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Search, IdCard, ChevronLeft, ChevronRight, Trash2, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
+import { canAccess } from "@/lib/permissions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/participants")({
@@ -25,6 +27,7 @@ export const Route = createFileRoute("/_app/participants")({
 });
 
 function ParticipantsPage() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState<string>("ALL");
@@ -61,6 +64,13 @@ function ParticipantsPage() {
   });
 
   const totalPages = q.data ? Math.max(1, Math.ceil(q.data.total / q.data.pageSize)) : 1;
+  const canCreateLastMinute = canAccess(user?.role, "participants.createLastMinute");
+  const canDeleteParticipants = canAccess(user?.role, "participants.delete");
+  const canViewBadges = canAccess(user?.role, "badges.view");
+  const canUseParticipantActions = canViewBadges || canDeleteParticipants;
+  const rowGridClass = canUseParticipantActions
+    ? "md:grid-cols-[1.2fr_2fr_1fr_1fr_1.4fr_1fr_1fr_auto]"
+    : "md:grid-cols-[1.2fr_2fr_1fr_1fr_1.4fr_1fr_1fr]";
 
   return (
     <div className="space-y-6">
@@ -70,34 +80,38 @@ function ParticipantsPage() {
           <h1 className="font-display text-3xl font-bold mt-1">Participants</h1>
         </div>
         <div className="flex flex-wrap gap-2">
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="text-destructive hover:text-destructive" disabled={!q.data?.total || deleteAllMutation.isPending}>
-                <Trash2 className="size-4 mr-2" />Tout supprimer
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Supprimer tous les participants ?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Les {q.data?.total ?? 0} participant(s), leurs passages, alertes associées et photos seront supprimés définitivement.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  disabled={deleteAllMutation.isPending}
-                  onClick={() => deleteAllMutation.mutate()}
-                >
-                  Supprimer tout
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <Link to="/quick-add">
-            <Button className="bg-deep">+ Ajout minute</Button>
-          </Link>
+          {canDeleteParticipants && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="text-destructive hover:text-destructive" disabled={!q.data?.total || deleteAllMutation.isPending}>
+                  <Trash2 className="size-4 mr-2" />Tout supprimer
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Supprimer tous les participants ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Les {q.data?.total ?? 0} participant(s), leurs passages, alertes associées et photos seront supprimés définitivement.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    disabled={deleteAllMutation.isPending}
+                    onClick={() => deleteAllMutation.mutate()}
+                  >
+                    Supprimer tout
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          {canCreateLastMinute && (
+            <Link to="/quick-add">
+              <Button className="bg-deep">+ Ajout minute</Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -141,12 +155,13 @@ function ParticipantsPage() {
       </Card>
 
       <Card className="overflow-hidden">
-        <div className="hidden md:grid grid-cols-[1.2fr_2fr_1fr_1fr_1.4fr_1fr_1fr_auto] gap-3 px-5 py-3 text-xs uppercase tracking-widest text-muted-foreground border-b">
-          <div>Badge</div><div>Nom</div><div>Type</div><div>Catégorie</div><div>Groupe / Équipe</div><div>Téléphone</div><div>Statut</div><div className="text-right">Action</div>
+        <div className={cn("hidden md:grid gap-3 px-5 py-3 text-xs uppercase tracking-widest text-muted-foreground border-b", rowGridClass)}>
+          <div>Badge</div><div>Nom</div><div>Type</div><div>Catégorie</div><div>Groupe / Équipe</div><div>Téléphone</div><div>Statut</div>
+          {canUseParticipantActions && <div className="text-right">Action</div>}
         </div>
         <div className="divide-y">
           {q.data?.items.map((p) => (
-            <div key={p.id} className="px-5 py-3 grid md:grid-cols-[1.2fr_2fr_1fr_1fr_1.4fr_1fr_1fr_auto] gap-2 md:gap-3 items-center">
+            <div key={p.id} className={cn("px-5 py-3 grid gap-2 md:gap-3 items-center", rowGridClass)}>
               <div className="font-turret text-sm">{p.badgeCode}</div>
               <div className="min-w-0">
                 <div className="font-medium truncate">{p.fullName}</div>
@@ -166,47 +181,55 @@ function ParticipantsPage() {
                   {p.currentStatus === "ON_SITE" ? "Sur site" : p.currentStatus === "OFF_SITE" ? "Hors site" : "Pas arrivé"}
                 </span>
               </div>
-              <div className="md:flex md:justify-end">
-                <AlertDialog>
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <Button size="sm" variant="outline">
-                        <MoreHorizontal className="size-4 mr-1" />Actions
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link to="/badges" search={{ id: p.id } as any}>
-                          <IdCard className="size-4 mr-2" />Badge
-                        </Link>
-                      </DropdownMenuItem>
-                      <AlertDialogTrigger asChild>
-                        <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(event) => event.preventDefault()}>
-                          <Trash2 className="size-4 mr-2" />Supprimer
-                        </DropdownMenuItem>
-                      </AlertDialogTrigger>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Supprimer ce participant ?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        {p.fullName} et son historique de passages associé seront supprimés définitivement.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                      <AlertDialogAction
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        disabled={deleteMutation.isPending}
-                        onClick={() => deleteMutation.mutate(p.id)}
-                      >
-                        Supprimer
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
+              {canUseParticipantActions && (
+                <div className="md:flex md:justify-end">
+                  <AlertDialog>
+                    <DropdownMenu modal={false}>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          <MoreHorizontal className="size-4 mr-1" />Actions
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {canViewBadges && (
+                          <DropdownMenuItem asChild>
+                            <Link to="/badges" search={{ id: p.id } as any}>
+                              <IdCard className="size-4 mr-2" />Badge
+                            </Link>
+                          </DropdownMenuItem>
+                        )}
+                        {canDeleteParticipants && (
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(event) => event.preventDefault()}>
+                              <Trash2 className="size-4 mr-2" />Supprimer
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    {canDeleteParticipants && (
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Supprimer ce participant ?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {p.fullName} et son historique de passages associé seront supprimés définitivement.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annuler</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            disabled={deleteMutation.isPending}
+                            onClick={() => deleteMutation.mutate(p.id)}
+                          >
+                            Supprimer
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    )}
+                  </AlertDialog>
+                </div>
+              )}
             </div>
           ))}
           {!q.data?.items.length && (

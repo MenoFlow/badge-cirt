@@ -1,12 +1,5 @@
 import { http } from "./client";
-import type { User, UserRole } from "@/lib/types";
-
-export const DEFAULT_ROUTE_BY_ROLE: Record<UserRole, string> = {
-  ADMIN: "/dashboard",
-  SUPERVISOR: "/dashboard",
-  SCAN_AGENT: "/scan",
-  REPORT_AGENT: "/reports",
-};
+import type { User } from "@/lib/types";
 
 export async function login(email: string, password: string): Promise<User> {
   return http<User>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });

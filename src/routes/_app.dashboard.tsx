@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState, type ReactNode } from "react";
 import { getAlerts, getDashboardSummary, getRecentPassages } from "@/services/api/dashboard";
 import { Card } from "@/components/ui/card";
 import {
   Users, UserCheck, UserX, UserMinus, AlertTriangle, ShieldAlert,
-  Activity, GraduationCap, Briefcase, UserCog, Crown,
+  Activity, GraduationCap, Briefcase, UserCog, Crown, ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
@@ -38,6 +39,40 @@ function StatCard({ label, value, icon: Icon, accent, index = 0 }: { label: stri
   );
 }
 
+function KpiAccordionSection({
+  title,
+  summary,
+  children,
+}: {
+  title: string;
+  summary: string;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <section className="min-w-0">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
+        className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 text-left shadow transition-shadow hover:shadow-card sm:px-5"
+      >
+        <div className="min-w-0">
+          <div className="font-display text-base font-semibold">{title}</div>
+          <div className="mt-0.5 truncate text-xs font-normal text-muted-foreground">{summary}</div>
+        </div>
+        <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="pt-3">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function DashboardPage() {
   const summary = useQuery({ queryKey: ["dashboard-summary"], queryFn: getDashboardSummary });
   const alerts = useQuery({ queryKey: ["dashboard-alerts"], queryFn: getAlerts });
@@ -57,20 +92,32 @@ function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3">
-        <StatCard index={0} label="Inscrits" value={s?.totalRegistered ?? "—"} icon={Users} accent="bg-deep text-white" />
-        <StatCard index={1} label="Participants" value={s?.participants ?? "—"} icon={GraduationCap} accent="bg-accent-soft text-primary-deep" />
-        <StatCard index={2} label="Coachs" value={s?.coaches ?? "—"} icon={UserCog} accent="bg-accent-soft text-primary-deep" />
-        <StatCard index={3} label="Organisation" value={s?.organizers ?? "—"} icon={Briefcase} accent="bg-accent-soft text-primary-deep" />
-        <StatCard index={4} label="Invités" value={s?.guests ?? "—"} icon={Crown} accent="bg-accent-soft text-primary-deep" />
-      </div>
+      <div className="space-y-3">
+        <KpiAccordionSection
+          title="Inscriptions"
+          summary={`${s?.totalRegistered ?? "—"} inscrits · ${s?.participants ?? "—"} participants`}
+        >
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3">
+            <StatCard index={0} label="Inscrits" value={s?.totalRegistered ?? "—"} icon={Users} accent="bg-deep text-white" />
+            <StatCard index={1} label="Participants" value={s?.participants ?? "—"} icon={GraduationCap} accent="bg-accent-soft text-primary-deep" />
+            <StatCard index={2} label="Coachs" value={s?.coaches ?? "—"} icon={UserCog} accent="bg-accent-soft text-primary-deep" />
+            <StatCard index={3} label="Organisation" value={s?.organizers ?? "—"} icon={Briefcase} accent="bg-accent-soft text-primary-deep" />
+            <StatCard index={4} label="Invités" value={s?.guests ?? "—"} icon={Crown} accent="bg-accent-soft text-primary-deep" />
+          </div>
+        </KpiAccordionSection>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3">
-        <StatCard index={5} label="Sur site" value={s?.onSite ?? "—"} icon={UserCheck} accent="bg-iris-lime/30 text-primary-deep" />
-        <StatCard index={6} label="Hors site" value={s?.offSite ?? "—"} icon={UserX} accent="bg-muted text-foreground" />
-        <StatCard index={7} label="Pas arrivés" value={s?.notArrived ?? "—"} icon={UserMinus} accent="bg-muted text-foreground" />
-        <StatCard index={8} label="Sorties longues" value={s?.longExits ?? "—"} icon={AlertTriangle} accent="bg-amber-100 text-amber-700" />
-        <StatCard index={9} label="Sorties critiques" value={s?.criticalExits ?? "—"} icon={ShieldAlert} accent="bg-destructive/15 text-destructive" />
+        <KpiAccordionSection
+          title="Présence"
+          summary={`${s?.onSite ?? "—"} sur site · ${s?.offSite ?? "—"} hors site · ${s?.notArrived ?? "—"} pas arrivés`}
+        >
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3">
+            <StatCard index={5} label="Sur site" value={s?.onSite ?? "—"} icon={UserCheck} accent="bg-iris-lime/30 text-primary-deep" />
+            <StatCard index={6} label="Hors site" value={s?.offSite ?? "—"} icon={UserX} accent="bg-muted text-foreground" />
+            <StatCard index={7} label="Pas arrivés" value={s?.notArrived ?? "—"} icon={UserMinus} accent="bg-muted text-foreground" />
+            <StatCard index={8} label="Sorties longues" value={s?.longExits ?? "—"} icon={AlertTriangle} accent="bg-amber-100 text-amber-700" />
+            <StatCard index={9} label="Sorties critiques" value={s?.criticalExits ?? "—"} icon={ShieldAlert} accent="bg-destructive/15 text-destructive" />
+          </div>
+        </KpiAccordionSection>
       </div>
 
       <div className="grid min-w-0 lg:grid-cols-3 gap-4 sm:gap-6">

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BadgePreview } from "@/components/BadgePreview";
 import { useMemo, useRef, useState } from "react";
+import { useAuth } from "@/lib/auth-context";
+import { canAccess } from "@/lib/permissions";
 import { Search, Download, UploadCloud, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -21,6 +23,7 @@ export const Route = createFileRoute("/_app/badges")({
 });
 
 function BadgesPage() {
+  const { user } = useAuth();
   const { id } = Route.useSearch();
   const navigate = useNavigate({ from: "/badges" } as any);
   const [q, setQ] = useState("");
@@ -70,6 +73,7 @@ function BadgesPage() {
     if (!list.data) return null;
     return list.data.items.find((p) => p.id === id) ?? list.data.items[0] ?? null;
   }, [list.data, id]);
+  const canConfigureBadges = canAccess(user?.role, "badges.configure");
 
   return (
     <div className="space-y-6">
@@ -79,10 +83,14 @@ function BadgesPage() {
           <h1 className="font-display text-3xl font-bold mt-1">Badges</h1>
         </div>
         <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
-          <input ref={templateInputRef} type="file" accept="application/pdf" className="hidden" onChange={(event) => uploadTemplate(event.target.files?.[0])} />
-          <input ref={logosInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple className="hidden" onChange={(event) => uploadLogos(event.target.files)} />
-          <Button variant="outline" onClick={() => templateInputRef.current?.click()}><UploadCloud className="size-4 mr-2" />Gabarit</Button>
-          <Button variant="outline" onClick={() => logosInputRef.current?.click()}><UploadCloud className="size-4 mr-2" />Logos</Button>
+          {canConfigureBadges && (
+            <>
+              <input ref={templateInputRef} type="file" accept="application/pdf" className="hidden" onChange={(event) => uploadTemplate(event.target.files?.[0])} />
+              <input ref={logosInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" multiple className="hidden" onChange={(event) => uploadLogos(event.target.files)} />
+              <Button variant="outline" onClick={() => templateInputRef.current?.click()}><UploadCloud className="size-4 mr-2" />Gabarit</Button>
+              <Button variant="outline" onClick={() => logosInputRef.current?.click()}><UploadCloud className="size-4 mr-2" />Logos</Button>
+            </>
+          )}
           <Button className="bg-deep" onClick={() => download("/badges/batch/pdf", "badges-cirt.pdf")}><Layers className="size-4 mr-2" />Tous les badges</Button>
         </div>
       </div>

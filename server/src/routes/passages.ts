@@ -5,7 +5,7 @@ import { asyncHandler, parseBody } from "../lib/api.js";
 import { requireAuth, requireRole, type AuthedRequest } from "../middleware/auth.js";
 
 export const passagesRouter = Router();
-passagesRouter.use(requireAuth);
+passagesRouter.use(requireAuth, requireRole("ADMIN", "SUPERVISOR"));
 
 passagesRouter.get("/", asyncHandler(async (req, res) => {
   const page = Math.max(1, Number(req.query.page ?? 1));

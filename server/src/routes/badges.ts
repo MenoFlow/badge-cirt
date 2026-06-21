@@ -11,7 +11,7 @@ import { createBadgePdf } from "../services/badges.js";
 export const badgesRouter = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 * 1024 * 1024 } });
 
-badgesRouter.use(requireAuth);
+badgesRouter.use(requireAuth, requireRole("ADMIN", "SUPERVISOR", "REPORT_AGENT"));
 
 badgesRouter.get("/batch/pdf", asyncHandler(async (_req, res) => {
   const participants = await prisma.participant.findMany({ where: { isActive: true }, select: { id: true }, orderBy: { badgeCode: "asc" } });

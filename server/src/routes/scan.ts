@@ -3,12 +3,12 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler, httpError, parseBody, serializeParticipant } from "../lib/api.js";
-import { requireAtLeast, requireAuth, type AuthedRequest } from "../middleware/auth.js";
+import { requireAuth, requireRole, type AuthedRequest } from "../middleware/auth.js";
 import { recordScan } from "../services/scan.js";
 
 export const scanRouter = Router();
 scanRouter.use(rateLimit({ windowMs: 60_000, max: 50 }));
-scanRouter.use(requireAuth, requireAtLeast("SCAN_AGENT"));
+scanRouter.use(requireAuth, requireRole("ADMIN", "SUPERVISOR", "SCAN_AGENT"));
 
 const bodySchema = z.object({ badgeCode: z.string().min(1), gateName: z.string().optional() });
 

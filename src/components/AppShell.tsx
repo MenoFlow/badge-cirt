@@ -6,28 +6,22 @@ import {
   IdCard, FileText, Settings as SettingsIcon, Shield, LogOut, Menu, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { canAccess, canAccessPath, DEFAULT_ROUTE_BY_ROLE, type Permission } from "@/lib/permissions";
 import { Button } from "./ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 
 const NAV = [
-  { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, roles: ["ADMIN", "SUPERVISOR"] },
-  { to: "/scan", label: "Scan rapide", icon: ScanLine, roles: ["ADMIN", "SUPERVISOR", "SCAN_AGENT"] },
-  { to: "/alerts", label: "Entrées / Sorties", icon: ArrowRightLeft, roles: ["ADMIN", "SUPERVISOR"] },
-  { to: "/participants", label: "Participants", icon: Users, roles: ["ADMIN", "SUPERVISOR", "SCAN_AGENT"] },
-  { to: "/quick-add", label: "Ajout minute", icon: UserPlus, roles: ["ADMIN", "SUPERVISOR", "SCAN_AGENT"] },
-  { to: "/import", label: "Import", icon: FileSpreadsheet, roles: ["ADMIN", "SUPERVISOR"] },
-  { to: "/badges", label: "Badges", icon: IdCard, roles: ["ADMIN", "SUPERVISOR", "REPORT_AGENT"] },
-  { to: "/reports", label: "Rapports", icon: FileText, roles: ["ADMIN", "SUPERVISOR", "REPORT_AGENT"] },
-  { to: "/settings", label: "Paramètres", icon: SettingsIcon, roles: ["ADMIN"] },
-  { to: "/users", label: "Utilisateurs", icon: Shield, roles: ["ADMIN"] },
+  { to: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard, permission: "dashboard.view" },
+  { to: "/scan", label: "Scan rapide", icon: ScanLine, permission: "scan.use" },
+  { to: "/alerts", label: "Entrées / Sorties", icon: ArrowRightLeft, permission: "movements.view" },
+  { to: "/participants", label: "Participants", icon: Users, permission: "participants.view" },
+  { to: "/quick-add", label: "Ajout minute", icon: UserPlus, permission: "participants.createLastMinute" },
+  { to: "/import", label: "Import", icon: FileSpreadsheet, permission: "participants.import" },
+  { to: "/badges", label: "Badges", icon: IdCard, permission: "badges.view" },
+  { to: "/reports", label: "Rapports", icon: FileText, permission: "reports.view" },
+  { to: "/settings", label: "Paramètres", icon: SettingsIcon, permission: "settings.manage" },
+  { to: "/users", label: "Utilisateurs", icon: Shield, permission: "users.manage" },
 ] as const;
-
-const FALLBACK_BY_ROLE = {
-  ADMIN: "/dashboard",
-  SUPERVISOR: "/dashboard",
-  SCAN_AGENT: "/scan",
-  REPORT_AGENT: "/reports",
-} as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, logout, loading } = useAuth();
@@ -41,8 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (loading || !user) return;
-    const allowed = NAV.some((item) => (pathname === item.to || pathname.startsWith(`${item.to}/`)) && item.roles.includes(user.role));
-    if (!allowed) navigate({ to: FALLBACK_BY_ROLE[user.role], replace: true });
+    if (!canAccessPath(user.role, pathname)) navigate({ to: DEFAULT_ROUTE_BY_ROLE[user.role], replace: true });
   }, [pathname, user, loading, navigate]);
 
   useEffect(() => { setOpen(false); }, [pathname]);
@@ -102,7 +95,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
           </div>
           <nav className="flex-1 overflow-y-auto px-3 pb-4 space-y-1">
-            {NAV.filter((item) => item.roles.includes(user.role)).map((item) => {
+            {NAV.filter((item) => canAccess(user.role, item.permission as Permission)).map((item) => {
               const active = pathname === item.to || (item.to !== "/dashboard" && pathname.startsWith(item.to));
               const Icon = item.icon;
               return (

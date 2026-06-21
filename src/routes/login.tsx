@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ShieldCheck, ScanLine } from "lucide-react";
-import { DEFAULT_ROUTE_BY_ROLE } from "@/services/api/auth";
+import { DEFAULT_ROUTE_BY_ROLE } from "@/lib/permissions";
 import { motion } from "framer-motion";
 
 export const Route = createFileRoute("/login")({

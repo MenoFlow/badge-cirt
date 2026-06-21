@@ -10,7 +10,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { generateBadgeCode, generateQrToken } from "../lib/qrToken.js";
 import { asyncHandler, httpError, nullableString, parseBody, serializeParticipant } from "../lib/api.js";
-import { requireAtLeast, requireAuth, requireRole, type AuthedRequest } from "../middleware/auth.js";
+import { requireAuth, requireRole, type AuthedRequest } from "../middleware/auth.js";
 
 export const participantsRouter = Router();
 
@@ -173,7 +173,7 @@ participantsRouter.get("/:id", asyncHandler(async (req, res) => {
   res.json(serializeParticipant(participant));
 }));
 
-participantsRouter.patch("/:id", requireAtLeast("SUPERVISOR"), asyncHandler(async (req, res) => {
+participantsRouter.patch("/:id", requireRole("ADMIN", "SUPERVISOR"), asyncHandler(async (req, res) => {
   const input = cleanParticipantInput(parseBody(participantSchema.partial(), req.body));
   const participant = await prisma.participant.update({ where: { id: req.params.id }, data: input });
   res.json(serializeParticipant(participant));
@@ -229,7 +229,7 @@ participantsRouter.delete("/:id", requireRole("ADMIN", "SUPERVISOR"), asyncHandl
   res.status(204).end();
 }));
 
-participantsRouter.post("/quick-add", requireAtLeast("SCAN_AGENT"), asyncHandler(async (req, res) => {
+participantsRouter.post("/quick-add", requireRole("ADMIN", "SUPERVISOR", "SCAN_AGENT"), asyncHandler(async (req, res) => {
   const schema = z.object({ participants: z.array(participantSchema).min(1).optional() }).and(participantSchema.partial());
   const body = parseBody(schema, req.body);
   const rows = body.participants?.length ? body.participants : [body as z.infer<typeof participantSchema>];
@@ -252,7 +252,7 @@ participantsRouter.post("/quick-add", requireAtLeast("SCAN_AGENT"), asyncHandler
   res.status(201).json(created.length === 1 ? created[0] : { items: created });
 }));
 
-participantsRouter.post("/import/preview", requireAtLeast("SUPERVISOR"), upload.single("file"), asyncHandler(async (req, res) => {
+participantsRouter.post("/import/preview", requireRole("ADMIN", "SUPERVISOR"), upload.single("file"), asyncHandler(async (req, res) => {
   if (!req.file) throw httpError(400, "Fichier requis");
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(req.file.buffer as any);
@@ -336,7 +336,7 @@ participantsRouter.post("/import/commit", requireRole("ADMIN", "SUPERVISOR"), as
   res.json({ importedRows });
 }));
 
-participantsRouter.post("/:id/photo", requireAtLeast("SCAN_AGENT"), upload.single("photo"), asyncHandler(async (req, res) => {
+participantsRouter.post("/:id/photo", requireRole("ADMIN", "SUPERVISOR", "SCAN_AGENT"), upload.single("photo"), asyncHandler(async (req, res) => {
   if (!req.file) throw httpError(400, "Photo requise");
   const meta = await sharp(req.file.buffer).metadata().catch(() => null);
   if (!meta?.format || !["jpeg", "png", "webp"].includes(meta.format)) throw httpError(400, "Format photo invalide");

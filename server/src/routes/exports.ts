@@ -2,11 +2,11 @@ import { Router } from "express";
 import ExcelJS from "exceljs";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler } from "../lib/api.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
 import { participantReportRows } from "../services/reportRows.js";
 
 export const exportsRouter = Router();
-exportsRouter.use(requireAuth);
+exportsRouter.use(requireAuth, requireRole("ADMIN", "SUPERVISOR", "REPORT_AGENT"));
 
 exportsRouter.get("/:kind.xlsx", asyncHandler(async (req, res) => {
   const workbook = new ExcelJS.Workbook();

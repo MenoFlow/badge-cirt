@@ -2,12 +2,12 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler, parseBody } from "../lib/api.js";
-import { requireAtLeast, requireAuth, type AuthedRequest } from "../middleware/auth.js";
+import { requireAuth, requireRole, type AuthedRequest } from "../middleware/auth.js";
 
 export const alertsRouter = Router();
-alertsRouter.use(requireAuth);
+alertsRouter.use(requireAuth, requireRole("ADMIN", "SUPERVISOR"));
 
-alertsRouter.post("/:participantId/action", requireAtLeast("SUPERVISOR"), asyncHandler<AuthedRequest>(async (req, res) => {
+alertsRouter.post("/:participantId/action", requireRole("ADMIN", "SUPERVISOR"), asyncHandler<AuthedRequest>(async (req, res) => {
   const input = parseBody(z.object({
     actionType: z.enum(["CONTACTED", "AUTHORIZED_EXIT", "RETURN_CONFIRMED", "ESCALATED"]),
     note: z.string().optional(),

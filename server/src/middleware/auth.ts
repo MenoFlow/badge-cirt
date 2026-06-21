@@ -2,7 +2,6 @@ import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import type { UserRole } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
-import { roleOrder } from "../lib/api.js";
 
 export interface AuthedRequest extends Request {
   user?: { id: string; email: string; role: UserRole };
@@ -25,15 +24,6 @@ export async function requireAuth(req: AuthedRequest, res: Response, next: NextF
 export function requireRole(...roles: UserRole[]) {
   return (req: AuthedRequest, res: Response, next: NextFunction) => {
     if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Vous n'avez pas les droits nécessaires" });
-    }
-    next();
-  };
-}
-
-export function requireAtLeast(role: UserRole) {
-  return (req: AuthedRequest, res: Response, next: NextFunction) => {
-    if (!req.user || roleOrder[req.user.role] < roleOrder[role]) {
       return res.status(403).json({ message: "Vous n'avez pas les droits nécessaires" });
     }
     next();

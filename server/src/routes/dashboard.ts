@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma.js";
 import { asyncHandler, serializeParticipant } from "../lib/api.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
 import { getSettings } from "../services/settings.js";
 
 export const dashboardRouter = Router();
-dashboardRouter.use(requireAuth);
+dashboardRouter.use(requireAuth, requireRole("ADMIN", "SUPERVISOR"));
 
 async function participantsWithStatus() {
   const rows = await prisma.participant.findMany({
