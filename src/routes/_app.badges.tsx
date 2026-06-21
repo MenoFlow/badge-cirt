@@ -17,9 +17,26 @@ import { Search, Download, UploadCloud, Layers, Mail, Send, X } from "lucide-rea
 import { toast } from "sonner";
 import { z } from "zod";
 import { motion } from "framer-motion";
+import type { Participant } from "@/lib/types";
 
 const search = z.object({ id: z.string().optional() });
 const MAIL_RESUME_KEY = "cirt.badge.email.results.v1";
+const INVALID_EMAILS_KEY = "cirt.badge.email.invalid.v1";
+
+type InvalidEmailRecord = {
+  participantId: string;
+  badgeCode: string;
+  sourceReference: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  sourceCategory: string;
+  groupName: string;
+  teamName: string;
+  organization: string;
+  reason: string;
+  detectedAt: string;
+};
 
 export const Route = createFileRoute("/_app/badges")({
   head: () => ({ meta: [{ title: "Badges · CIRT" }] }),
@@ -37,6 +54,7 @@ function BadgesPage() {
   const [mailProgress, setMailProgress] = useState({ done: 0, total: 0, sent: 0, skipped: 0, failed: 0 });
   const [mailResults, setMailResults] = useState<BadgeEmailResult[]>([]);
   const [mailSending, setMailSending] = useState(false);
+  const [invalidEmailCount, setInvalidEmailCount] = useState(() => readSavedInvalidEmails().length);
   const templateInputRef = useRef<HTMLInputElement | null>(null);
   const logosInputRef = useRef<HTMLInputElement | null>(null);
   const list = useQuery({ queryKey: ["participants-badges", q, page], queryFn: () => listParticipants({ search: q, page, pageSize: 5 }) });
@@ -111,13 +129,110 @@ function BadgesPage() {
     localStorage.removeItem(MAIL_RESUME_KEY);
   }
 
+  function readSavedInvalidEmails() {
+    if (typeof window === "undefined") return [];
+    try {
+      const parsed = JSON.parse(localStorage.getItem(INVALID_EMAILS_KEY) ?? "[]");
+      return Array.isArray(parsed) ? parsed as InvalidEmailRecord[] : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveInvalidEmails(records: InvalidEmailRecord[]) {
+    if (typeof window === "undefined") return;
+    localStorage.setItem(INVALID_EMAILS_KEY, JSON.stringify(records));
+    setInvalidEmailCount(records.length);
+  }
+
+  function resetInvalidEmails() {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem(INVALID_EMAILS_KEY);
+    setInvalidEmailCount(0);
+  }
+
+  function saveInvalidEmail(participant: Participant, reason: string) {
+    const records = readSavedInvalidEmails();
+    const nextRecord: InvalidEmailRecord = {
+      participantId: participant.id,
+      badgeCode: participant.badgeCode,
+      sourceReference: participant.sourceReference ?? "",
+      fullName: participant.fullName,
+      email: participant.email ?? "",
+      phone: participant.phone ?? "",
+      sourceCategory: participant.sourceCategory ?? "",
+      groupName: participant.groupName ?? "",
+      teamName: participant.teamName ?? "",
+      organization: participant.organization ?? "",
+      reason,
+      detectedAt: new Date().toISOString(),
+    };
+    const deduped = records.filter((record) => record.participantId !== participant.id);
+    saveInvalidEmails([...deduped, nextRecord]);
+    return nextRecord;
+  }
+
+  function downloadInvalidEmails() {
+    const records = readSavedInvalidEmails();
+    if (!records.length) {
+      toast.info("Aucun email invalide enregistré");
+      return;
+    }
+    const columns: Array<keyof InvalidEmailRecord> = [
+      "badgeCode",
+      "participantId",
+      "sourceReference",
+      "fullName",
+      "email",
+      "phone",
+      "sourceCategory",
+      "groupName",
+      "teamName",
+      "organization",
+      "reason",
+      "detectedAt",
+    ];
+    const header = [
+      "Numero badge",
+      "ID",
+      "Reference",
+      "Nom",
+      "Email",
+      "Telephone",
+      "Categorie",
+      "Groupe",
+      "Equipe",
+      "Organisation",
+      "Raison",
+      "Detecte le",
+    ];
+    const escapeCsv = (value: string) => `"${String(value ?? "").replaceAll("\"", "\"\"")}"`;
+    const rows = records.map((record) => columns.map((column) => escapeCsv(record[column])).join(","));
+    const blob = new Blob([`\uFEFF${[header.map(escapeCsv).join(","), ...rows].join("\n")}`], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `emails-invalides-badges-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function sendAllBadgesByEmail({ resume = false }: { resume?: boolean } = {}) {
     setMailDialogOpen(true);
     setMailSending(true);
     const savedResults = resume ? readSavedMailResults().filter((result) => result.ok) : [];
-    if (!resume) resetSavedMailResults();
+    const savedInvalids = resume ? readSavedInvalidEmails() : [];
+    if (!resume) {
+      resetSavedMailResults();
+      resetInvalidEmails();
+    }
     const results: BadgeEmailResult[] = [...savedResults];
     const successfulIds = new Set(savedResults.filter((result) => result.ok).map((result) => result.participantId));
+    const invalidIds = new Set(savedInvalids.map((record) => record.participantId));
     setMailResults(results);
     setMailProgress({
       done: savedResults.length,
@@ -128,12 +243,40 @@ function BadgesPage() {
     });
     try {
       const participants = await loadAllParticipants();
-      const pending = participants.filter((participant) => !successfulIds.has(participant.id));
-      setMailProgress((current) => ({ ...current, total: participants.length }));
+      const pending = participants.filter((participant) => !successfulIds.has(participant.id) && !invalidIds.has(participant.id));
+      setMailProgress((current) => ({
+        ...current,
+        done: savedResults.length + savedInvalids.length,
+        total: participants.length,
+        failed: current.failed + savedInvalids.length,
+      }));
 
       for (const participant of pending) {
+        if (!isValidEmail(participant.email)) {
+          const reason = participant.email?.trim() ? "Format email invalide" : "Email manquant";
+          saveInvalidEmail(participant, reason);
+          results.push({
+            ok: false,
+            participantId: participant.id,
+            badgeCode: participant.badgeCode,
+            fullName: participant.fullName,
+            email: participant.email ?? undefined,
+            error: reason,
+          });
+          saveMailResults(results);
+          setMailProgress((current) => ({
+            ...current,
+            done: current.done + 1,
+            failed: current.failed + 1,
+          }));
+          setMailResults([...results]);
+          continue;
+        }
         try {
           const result = await sendParticipantBadgeEmail(participant.id, { force: !resume });
+          if (!result.ok && isInvalidEmailError(result.error)) {
+            saveInvalidEmail(participant, result.error ?? "Email invalide");
+          }
           results.push(result);
           saveMailResults(results);
           setMailProgress((current) => ({
@@ -144,11 +287,15 @@ function BadgesPage() {
             failed: current.failed + (result.ok ? 0 : 1),
           }));
         } catch (error: any) {
+          if (isInvalidEmailError(error?.message)) {
+            saveInvalidEmail(participant, error.message);
+          }
           results.push({
             ok: false,
             participantId: participant.id,
             badgeCode: participant.badgeCode,
             fullName: participant.fullName,
+            email: participant.email ?? undefined,
             error: error?.message ?? "Envoi impossible",
           });
           saveMailResults(results);
@@ -212,7 +359,7 @@ function BadgesPage() {
 
       <div className="grid min-w-0 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] gap-6 items-start">
         <Card className="overflow-hidden min-w-0">
-          <div className="grid gap-2 border-b p-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <div className="grid gap-2 border-b p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <div className="relative">
               <Search className="size-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input placeholder="Rechercher un participant…" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} className="pl-9" />
@@ -237,6 +384,11 @@ function BadgesPage() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
+            )}
+            {canSendBadgeEmails && (
+              <Button variant="outline" disabled={!invalidEmailCount} onClick={downloadInvalidEmails}>
+                <Download className="size-4 mr-2" />Invalides {invalidEmailCount ? `(${invalidEmailCount})` : ""}
+              </Button>
             )}
             {canSendBadgeEmails && readSavedMailResults().some((result) => result.ok) && (
               <Button variant="secondary" disabled={mailSending} onClick={() => sendAllBadgesByEmail({ resume: true })}>
@@ -367,5 +519,20 @@ function BadgesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function isValidEmail(email: string | null | undefined) {
+  return Boolean(email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()));
+}
+
+function isInvalidEmailError(message: string | null | undefined) {
+  const text = String(message ?? "").toLowerCase();
+  return (
+    text.includes("aucun email") ||
+    text.includes("adresse email") ||
+    text.includes("destinataire invalide") ||
+    text.includes("invalid recipient") ||
+    text.includes("recipient address rejected")
   );
 }

@@ -33,6 +33,29 @@ export async function getParticipantByToken(token: string): Promise<Participant 
   return http<Participant>(`/public/badge/${token}`);
 }
 
+export type ParticipantUpdateInput = Partial<
+  Pick<
+    Participant,
+    | "participantType"
+    | "sourceCategory"
+    | "fullName"
+    | "groupName"
+    | "teamName"
+    | "phone"
+    | "email"
+    | "organization"
+    | "school"
+    | "roleLabel"
+    | "sourceReference"
+    | "notes"
+    | "isActive"
+  >
+>;
+
+export async function updateParticipant(id: string, input: ParticipantUpdateInput): Promise<Participant> {
+  return http<Participant>(`/participants/${id}`, { method: "PATCH", body: JSON.stringify(input) });
+}
+
 export interface QuickAddInput {
   participantType: ParticipantType;
   sourceCategory: SourceCategory;

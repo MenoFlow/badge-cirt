@@ -1,25 +1,39 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { deleteAllParticipants, deleteParticipant, listParticipants, sendParticipantBadgeEmail } from "@/services/api/participants";
+import type { ReactNode } from "react";
+import {
+  deleteAllParticipants,
+  deleteParticipant,
+  listParticipants,
+  sendParticipantBadgeEmail,
+  updateParticipant,
+  type ParticipantUpdateInput,
+} from "@/services/api/participants";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, IdCard, ChevronLeft, ChevronRight, Trash2, MoreHorizontal, Mail } from "lucide-react";
+import { Search, IdCard, ChevronLeft, ChevronRight, Trash2, MoreHorizontal, Mail, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { canAccess } from "@/lib/permissions";
 import { toast } from "sonner";
+import type { Participant } from "@/lib/types";
 
 export const Route = createFileRoute("/_app/participants")({
   head: () => ({ meta: [{ title: "Participants · CIRT" }] }),
@@ -34,6 +48,8 @@ function ParticipantsPage() {
   const [type, setType] = useState<string>("ALL");
   const [status, setStatus] = useState<string>("ALL");
   const [page, setPage] = useState(1);
+  const [editingParticipant, setEditingParticipant] = useState<Participant | null>(null);
+  const [editForm, setEditForm] = useState<ParticipantUpdateInput>({});
 
   const q = useQuery({
     queryKey: ["participants", { search, category, type, status, page }],
@@ -70,14 +86,26 @@ function ParticipantsPage() {
     },
     onError: (error: any) => toast.error("Envoi impossible", { description: error?.message ?? "Vérifiez la configuration email." }),
   });
+  const updateMutation = useMutation({
+    mutationFn: ({ id, input }: { id: string; input: ParticipantUpdateInput }) => updateParticipant(id, input),
+    onSuccess: async () => {
+      toast.success("Participant modifié");
+      setEditingParticipant(null);
+      await queryClient.invalidateQueries({ queryKey: ["participants"] });
+      await queryClient.invalidateQueries({ queryKey: ["participants-badges"] });
+      await queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: (error: any) => toast.error("Modification impossible", { description: error?.message ?? "Vérifiez les informations." }),
+  });
 
   const totalPages = q.data ? Math.max(1, Math.ceil(q.data.total / q.data.pageSize)) : 1;
   const canCreateLastMinute = canAccess(user?.role, "participants.createLastMinute");
   const canDeleteParticipants = canAccess(user?.role, "participants.delete");
   const canViewBadges = canAccess(user?.role, "badges.view");
+  const canEditParticipants = user?.role === "ADMIN";
   const canSendBadge = user?.role === "ADMIN";
   const showDisabledActions = user?.role === "SCAN_AGENT";
-  const canUseParticipantActions = canViewBadges || canDeleteParticipants || canSendBadge || showDisabledActions;
+  const canUseParticipantActions = canViewBadges || canEditParticipants || canDeleteParticipants || canSendBadge || showDisabledActions;
   const rowGridClass = canUseParticipantActions
     ? "md:grid-cols-[1.2fr_2fr_1fr_1fr_1.4fr_1fr_1fr_auto]"
     : "md:grid-cols-[1.2fr_2fr_1fr_1fr_1.4fr_1fr_1fr]";
@@ -221,6 +249,16 @@ function ParticipantsPage() {
                               <Mail className="size-4 mr-2" />Envoi badge
                             </DropdownMenuItem>
                           )}
+                          {canEditParticipants && (
+                            <DropdownMenuItem
+                              onSelect={() => {
+                                setEditingParticipant(p);
+                                setEditForm(participantToForm(p));
+                              }}
+                            >
+                              <Pencil className="size-4 mr-2" />Modifier
+                            </DropdownMenuItem>
+                          )}
                           {canDeleteParticipants && (
                             <AlertDialogTrigger asChild>
                               <DropdownMenuItem className="text-destructive focus:text-destructive" onSelect={(event) => event.preventDefault()}>
@@ -270,6 +308,136 @@ function ParticipantsPage() {
           </div>
         </div>
       </Card>
+
+      <Dialog open={Boolean(editingParticipant)} onOpenChange={(open) => !open && setEditingParticipant(null)}>
+        <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Modifier le participant</DialogTitle>
+            <DialogDescription>Corrigez les informations utilisées pour les badges, rapports et emails.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Nom complet">
+              <Input value={editForm.fullName ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, fullName: event.target.value }))} />
+            </Field>
+            <Field label="Email">
+              <Input type="email" value={editForm.email ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, email: event.target.value }))} />
+            </Field>
+            <Field label="Téléphone">
+              <Input value={editForm.phone ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, phone: event.target.value }))} />
+            </Field>
+            <Field label="Référence">
+              <Input value={editForm.sourceReference ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, sourceReference: event.target.value }))} />
+            </Field>
+            <Field label="Catégorie">
+              <Select value={editForm.sourceCategory ?? "Autre"} onValueChange={(value) => setEditForm((current) => ({ ...current, sourceCategory: value as Participant["sourceCategory"] }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {["Hackathon", "CTF", "Coach", "Organisation", "Invité", "Autre"].map((value) => (
+                    <SelectItem key={value} value={value}>{value}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Type">
+              <Select value={editForm.participantType ?? "PARTICIPANT"} onValueChange={(value) => setEditForm((current) => ({ ...current, participantType: value as Participant["participantType"] }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PARTICIPANT">Participant</SelectItem>
+                  <SelectItem value="COACH">Coach</SelectItem>
+                  <SelectItem value="ORGANIZER">Organisation</SelectItem>
+                  <SelectItem value="GUEST">Invité</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Groupe">
+              <Input value={editForm.groupName ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, groupName: event.target.value }))} />
+            </Field>
+            <Field label="Équipe">
+              <Input value={editForm.teamName ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, teamName: event.target.value }))} />
+            </Field>
+            <Field label="Organisation">
+              <Input value={editForm.organization ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, organization: event.target.value }))} />
+            </Field>
+            <Field label="Formation">
+              <Input value={editForm.school ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, school: event.target.value }))} />
+            </Field>
+            <Field label="Rôle">
+              <Input value={editForm.roleLabel ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, roleLabel: event.target.value }))} />
+            </Field>
+            <Field label="Actif">
+              <Select value={editForm.isActive === false ? "false" : "true"} onValueChange={(value) => setEditForm((current) => ({ ...current, isActive: value === "true" }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Oui</SelectItem>
+                  <SelectItem value="false">Non</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Notes">
+                <Textarea value={editForm.notes ?? ""} onChange={(event) => setEditForm((current) => ({ ...current, notes: event.target.value }))} />
+              </Field>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingParticipant(null)}>Annuler</Button>
+            <Button
+              className="bg-deep"
+              disabled={!editingParticipant || updateMutation.isPending || !String(editForm.fullName ?? "").trim()}
+              onClick={() => editingParticipant && updateMutation.mutate({ id: editingParticipant.id, input: normalizeParticipantForm(editForm) })}
+            >
+              Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function participantToForm(participant: Participant): ParticipantUpdateInput {
+  return {
+    participantType: participant.participantType,
+    sourceCategory: participant.sourceCategory,
+    fullName: participant.fullName,
+    groupName: participant.groupName,
+    teamName: participant.teamName,
+    phone: participant.phone,
+    email: participant.email,
+    organization: participant.organization,
+    school: participant.school,
+    roleLabel: participant.roleLabel,
+    sourceReference: participant.sourceReference,
+    notes: participant.notes,
+    isActive: participant.isActive,
+  };
+}
+
+function normalizeParticipantForm(input: ParticipantUpdateInput): ParticipantUpdateInput {
+  const nullable = (value: unknown) => {
+    const text = String(value ?? "").trim();
+    return text || null;
+  };
+  return {
+    ...input,
+    fullName: String(input.fullName ?? "").trim(),
+    email: nullable(input.email)?.toLowerCase() ?? null,
+    phone: nullable(input.phone),
+    sourceReference: nullable(input.sourceReference),
+    groupName: nullable(input.groupName),
+    teamName: nullable(input.teamName),
+    organization: nullable(input.organization),
+    school: nullable(input.school),
+    roleLabel: nullable(input.roleLabel),
+    notes: nullable(input.notes),
+  };
+}
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      {children}
     </div>
   );
 }
