@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({ meta: [{ title: "Tableau de bord · CIRT" }] }),
@@ -113,8 +114,17 @@ function DashboardPage() {
     queryKey: ["dashboard-passages", 5],
     queryFn: () => getRecentPassages(5),
   });
+  const [alertPage, setAlertPage] = useState(1);
 
   const s = summary.data;
+  const alertsList = alerts.data ?? [];
+  const alertsPerPage = 5;
+  const totalAlertPages = Math.ceil(alertsList.length / alertsPerPage) || 1;
+  const currentAlertPage = Math.min(alertPage, totalAlertPages);
+  const paginatedAlerts = alertsList.slice(
+    (currentAlertPage - 1) * alertsPerPage,
+    currentAlertPage * alertsPerPage,
+  );
 
   return (
     <div className="space-y-6">
@@ -290,7 +300,7 @@ function DashboardPage() {
             </Link>
           </div>
           <div className="mt-4 space-y-3">
-            {(alerts.data ?? []).map((a) => (
+            {paginatedAlerts.map((a) => (
               <div
                 key={a.participant.id}
                 className={cn(
@@ -322,9 +332,36 @@ function DashboardPage() {
                 </div>
               </div>
             ))}
-            {!alerts.data?.length && (
+            {!alertsList.length && (
               <div className="py-8 text-center text-sm text-muted-foreground">
                 Aucune alerte active.
+              </div>
+            )}
+            {totalAlertPages > 1 && (
+              <div className="flex items-center justify-between pt-2 border-t border-border mt-3">
+                <div className="text-xs text-muted-foreground">
+                  Page {currentAlertPage} sur {totalAlertPages}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 text-xs"
+                    disabled={currentAlertPage === 1}
+                    onClick={() => setAlertPage((p) => Math.max(1, p - 1))}
+                  >
+                    Précédent
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 text-xs"
+                    disabled={currentAlertPage === totalAlertPages}
+                    onClick={() => setAlertPage((p) => Math.min(totalAlertPages, p + 1))}
+                  >
+                    Suivant
+                  </Button>
+                </div>
               </div>
             )}
           </div>
