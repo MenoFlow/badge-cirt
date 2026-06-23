@@ -1,16 +1,16 @@
-export type ParticipantType = "PARTICIPANT" | "COACH" | "ORGANIZER" | "GUEST";
-export type SourceCategory = "Hackathon" | "CTF" | "Coach" | "Organisation" | "Invité" | "Autre";
+export type ParticipantType = "PARTICIPANT" | "COACH" | "ORGANIZER" | "GUEST" | "JURY";
+export type SourceCategory =
+  | "Hackathon"
+  | "CTF"
+  | "Coach"
+  | "Jury"
+  | "Organisation"
+  | "Invité"
+  | "Autre";
 export type ExpectedPresence = "MONDAY" | "TUESDAY" | "BOTH_DAYS" | "UNKNOWN";
 export type MovementType = "ENTRY" | "EXIT";
-export type ScanMethod =
-  | "QR_SCAN"
-  | "MANUAL_BADGE_CODE"
-  | "MANUAL_SEARCH"
-  | "ADMIN_CORRECTION";
-export type GateName =
-  | "Entrée principale"
-  | "Sortie principale"
-  | "Bureau de contrôle";
+export type ScanMethod = "QR_SCAN" | "MANUAL_BADGE_CODE" | "MANUAL_SEARCH" | "ADMIN_CORRECTION";
+export type GateName = "Entrée principale" | "Sortie principale" | "Bureau de contrôle";
 export type UserRole = "ADMIN" | "SUPERVISOR" | "SCAN_AGENT" | "REPORT_AGENT";
 export type PresenceStatus = "ON_SITE" | "OFF_SITE" | "NOT_ARRIVED";
 
@@ -53,7 +53,16 @@ export interface Participant {
 export interface Passage {
   id: string;
   participantId: string;
-  participant?: Pick<Participant, "fullName" | "badgeCode" | "photoPath" | "sourceCategory" | "groupName" | "teamName" | "organization">;
+  participant?: Pick<
+    Participant,
+    | "fullName"
+    | "badgeCode"
+    | "photoPath"
+    | "sourceCategory"
+    | "groupName"
+    | "teamName"
+    | "organization"
+  >;
   movementType: MovementType;
   scannedAt: string;
   scannedByUserId: string;
@@ -90,6 +99,7 @@ export interface DashboardSummary {
   totalRegistered: number;
   participants: number;
   coaches: number;
+  juries: number;
   organizers: number;
   guests: number;
   onSite: number;

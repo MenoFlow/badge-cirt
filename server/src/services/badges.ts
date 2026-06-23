@@ -6,6 +6,7 @@ import { getSettings } from "./settings.js";
 const typeLabel = {
   PARTICIPANT: "Participant",
   COACH: "Coach",
+  JURY: "Jury",
   ORGANIZER: "Organisation",
   GUEST: "Invité",
 } as const;
@@ -49,7 +50,16 @@ function circlePath(cx: number, cy: number, radius: number) {
   ].join(" ");
 }
 
-function drawCenteredText(page: any, text: string, x: number, y: number, maxWidth: number, size: number, font: PDFFont, color: ReturnType<typeof rgb>) {
+function drawCenteredText(
+  page: any,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  size: number,
+  font: PDFFont,
+  color: ReturnType<typeof rgb>,
+) {
   const width = font.widthOfTextAtSize(text, size);
   page.drawText(text, { x: x + Math.max(0, (maxWidth - width) / 2), y, size, font, color });
 }
@@ -71,9 +81,10 @@ function drawVerticalGradient(page: any, width: number, height: number) {
 
   for (let index = 0; index < steps; index += 1) {
     const ratio = index / (steps - 1);
-    const color = ratio < 0.5
-      ? mixColor(bottom, middle, ratio / 0.5)
-      : mixColor(middle, top, (ratio - 0.5) / 0.5);
+    const color =
+      ratio < 0.5
+        ? mixColor(bottom, middle, ratio / 0.5)
+        : mixColor(middle, top, (ratio - 0.5) / 0.5);
     page.drawRectangle({ x: 0, y: index * stepHeight, width, height: stepHeight + 1, color });
   }
 }
@@ -101,7 +112,11 @@ function calculateNameLayout(text: string, maxWidth: number, font: PDFFont, maxL
   for (const fontSize of sizes) {
     const words = normalized
       .split(" ")
-      .flatMap((word) => font.widthOfTextAtSize(word, fontSize) > maxWidth ? splitLongWord(word, maxWidth, fontSize, font) : [word]);
+      .flatMap((word) =>
+        font.widthOfTextAtSize(word, fontSize) > maxWidth
+          ? splitLongWord(word, maxWidth, fontSize, font)
+          : [word],
+      );
     const lines: string[] = [];
     let line = "";
 
@@ -122,7 +137,11 @@ function calculateNameLayout(text: string, maxWidth: number, font: PDFFont, maxL
   const fontSize = sizes[sizes.length - 1];
   const words = normalized
     .split(" ")
-    .flatMap((word) => font.widthOfTextAtSize(word, fontSize) > maxWidth ? splitLongWord(word, maxWidth, fontSize, font) : [word]);
+    .flatMap((word) =>
+      font.widthOfTextAtSize(word, fontSize) > maxWidth
+        ? splitLongWord(word, maxWidth, fontSize, font)
+        : [word],
+    );
   const lines: string[] = [];
   let line = "";
   for (const word of words) {
@@ -138,7 +157,8 @@ function calculateNameLayout(text: string, maxWidth: number, font: PDFFont, maxL
   if (line && lines.length < maxLines) lines.push(line);
   if (lines.length === maxLines && words.join(" ").length > lines.join(" ").length) {
     let last = lines[lines.length - 1] ?? "";
-    while (last && font.widthOfTextAtSize(`${last}…`, fontSize) > maxWidth) last = last.slice(0, -1);
+    while (last && font.widthOfTextAtSize(`${last}…`, fontSize) > maxWidth)
+      last = last.slice(0, -1);
     lines[lines.length - 1] = `${last || normalized.slice(0, 1)}…`;
   }
   return { lines, fontSize, overflows: true };
@@ -166,11 +186,16 @@ async function drawBadgePage(pdf: PDFDocument, participantId: string) {
   const lime = hex("#dfff59");
   const mutedWhite = rgb(1, 1, 1);
   const softWhite = rgb(0.74, 0.68, 0.88);
-  const initials = participant.fullName.split(" ").map((part) => part[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-  const organizationLine = [
-    participant.teamName ?? participant.groupName,
-    participant.organization,
-  ].filter(Boolean).join(" · ");
+  const initials = participant.fullName
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+  const organizationLine = [participant.teamName ?? participant.groupName, participant.organization]
+    .filter(Boolean)
+    .join(" · ");
 
   drawVerticalGradient(page, 344, 528);
   page.drawRectangle({ x: 0, y: 0, width: 344, height: 528, color: hex("#6b5ce7"), opacity: 0.08 });
@@ -185,14 +210,27 @@ async function drawBadgePage(pdf: PDFDocument, participantId: string) {
     color: softWhite,
   });
 
-  page.drawSvgPath(circlePath(172, 431, 47), { color: rgb(1, 1, 1), opacity: 0.10 });
-  page.drawSvgPath(circlePath(172, 431, 47), { borderColor: rgb(1, 1, 1), borderWidth: 2, opacity: 0.45 });
+  page.drawSvgPath(circlePath(172, 431, 47), { color: rgb(1, 1, 1), opacity: 0.1 });
+  page.drawSvgPath(circlePath(172, 431, 47), {
+    borderColor: rgb(1, 1, 1),
+    borderWidth: 2,
+    opacity: 0.45,
+  });
   drawCenteredText(page, initials || "CB", 125, 421, 94, 23, bold, rgb(1, 1, 1));
 
   const nameLayout = calculateNameLayout(participant.fullName, 300, bold, 2);
   const nameStartY = nameLayout.lines.length > 1 ? 361 : 366;
   nameLayout.lines.forEach((line, index) => {
-    drawCenteredText(page, line, 22, nameStartY - index * (nameLayout.fontSize + 4), 300, nameLayout.fontSize, bold, rgb(1, 1, 1));
+    drawCenteredText(
+      page,
+      line,
+      22,
+      nameStartY - index * (nameLayout.fontSize + 4),
+      300,
+      nameLayout.fontSize,
+      bold,
+      rgb(1, 1, 1),
+    );
   });
 
   const roleLine = `${typeLabel[participant.participantType].toUpperCase()} · ${(participant.sourceCategory ?? "-").toUpperCase()}`;
@@ -201,9 +239,9 @@ async function drawBadgePage(pdf: PDFDocument, participantId: string) {
     drawCenteredText(page, organizationLine, 22, 309, 300, 10.5, font, softWhite);
   }
 
-  drawCenteredText(page, "BADGE ID", 10, 258, 324, 9, font, rgb(0.50, 0.39, 0.70));
+  drawCenteredText(page, "BADGE ID", 10, 258, 324, 9, font, rgb(0.5, 0.39, 0.7));
   drawCenteredText(page, participant.badgeCode, 10, 234, 324, 22, font, rgb(1, 1, 1));
-  drawCenteredText(page, "scan or saisir", 10, 215, 324, 9, font, rgb(0.70, 0.62, 0.84));
+  drawCenteredText(page, "scan or saisir", 10, 215, 324, 9, font, rgb(0.7, 0.62, 0.84));
   page.drawImage(qr, { x: 77, y: 37, width: 190, height: 190 });
 }
 

@@ -19,6 +19,7 @@ enum ParticipantType {
   COACH
   ORGANIZER
   GUEST
+  JURY
 }
 
 enum ExpectedPresence {

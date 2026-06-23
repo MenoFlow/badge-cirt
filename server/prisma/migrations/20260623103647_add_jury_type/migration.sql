@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Participant` MODIFY `participantType` ENUM('PARTICIPANT', 'COACH', 'ORGANIZER', 'GUEST', 'JURY') NOT NULL DEFAULT 'PARTICIPANT';

@@ -10,7 +10,9 @@ dashboardRouter.use(requireAuth);
 async function participantsWithStatus() {
   const rows = await prisma.participant.findMany({
     where: { isActive: true },
-    include: { passages: { where: { isCancelled: false }, orderBy: { scannedAt: "desc" }, take: 1 } },
+    include: {
+      passages: { where: { isCancelled: false }, orderBy: { scannedAt: "desc" }, take: 1 },
+    },
   });
   return rows.map(serializeParticipant);
 }
@@ -32,43 +34,58 @@ async function alerts() {
     .filter((a) => a.minutesOut >= settings.exitWarningMinutes);
 }
 
-dashboardRouter.get("/summary", asyncHandler(async (_req, res) => {
-  const rows = await participantsWithStatus();
-  const alertRows = await alerts();
-  res.json({
-    totalRegistered: rows.length,
-    participants: rows.filter((p) => p.participantType === "PARTICIPANT").length,
-    coaches: rows.filter((p) => p.participantType === "COACH").length,
-    organizers: rows.filter((p) => p.participantType === "ORGANIZER").length,
-    guests: rows.filter((p) => p.participantType === "GUEST").length,
-    onSite: rows.filter((p) => p.currentStatus === "ON_SITE").length,
-    offSite: rows.filter((p) => p.currentStatus === "OFF_SITE").length,
-    notArrived: rows.filter((p) => p.currentStatus === "NOT_ARRIVED").length,
-    longExits: alertRows.filter((a) => a.severity === "warning").length,
-    criticalExits: alertRows.filter((a) => a.severity === "critical").length,
-  });
-}));
+dashboardRouter.get(
+  "/summary",
+  asyncHandler(async (_req, res) => {
+    const rows = await participantsWithStatus();
+    const alertRows = await alerts();
+    res.json({
+      totalRegistered: rows.length,
+      participants: rows.filter((p) => p.participantType === "PARTICIPANT").length,
+      coaches: rows.filter((p) => p.participantType === "COACH").length,
+      juries: rows.filter((p) => p.participantType === "JURY").length,
+      organizers: rows.filter((p) => p.participantType === "ORGANIZER").length,
+      guests: rows.filter((p) => p.participantType === "GUEST").length,
+      onSite: rows.filter((p) => p.currentStatus === "ON_SITE").length,
+      offSite: rows.filter((p) => p.currentStatus === "OFF_SITE").length,
+      notArrived: rows.filter((p) => p.currentStatus === "NOT_ARRIVED").length,
+      longExits: alertRows.filter((a) => a.severity === "warning").length,
+      criticalExits: alertRows.filter((a) => a.severity === "critical").length,
+    });
+  }),
+);
 
-dashboardRouter.get("/current-status", asyncHandler(async (_req, res) => {
-  const rows = await participantsWithStatus();
-  res.json({
-    ON_SITE: rows.filter((p) => p.currentStatus === "ON_SITE"),
-    OFF_SITE: rows.filter((p) => p.currentStatus === "OFF_SITE"),
-    NOT_ARRIVED: rows.filter((p) => p.currentStatus === "NOT_ARRIVED"),
-  });
-}));
+dashboardRouter.get(
+  "/current-status",
+  asyncHandler(async (_req, res) => {
+    const rows = await participantsWithStatus();
+    res.json({
+      ON_SITE: rows.filter((p) => p.currentStatus === "ON_SITE"),
+      OFF_SITE: rows.filter((p) => p.currentStatus === "OFF_SITE"),
+      NOT_ARRIVED: rows.filter((p) => p.currentStatus === "NOT_ARRIVED"),
+    });
+  }),
+);
 
-dashboardRouter.get("/recent-passages", asyncHandler(async (req, res) => {
-  const limit = Math.min(100, Number(req.query.limit ?? 20));
-  const rows = await prisma.passage.findMany({
-    where: { isCancelled: false },
-    orderBy: { scannedAt: "desc" },
-    take: limit,
-    include: { participant: true, scannedBy: true },
-  });
-  res.json(rows.map(({ scannedBy, ...passage }) => ({ ...passage, scannedByName: scannedBy.name })));
-}));
+dashboardRouter.get(
+  "/recent-passages",
+  asyncHandler(async (req, res) => {
+    const limit = Math.min(100, Number(req.query.limit ?? 20));
+    const rows = await prisma.passage.findMany({
+      where: { isCancelled: false },
+      orderBy: { scannedAt: "desc" },
+      take: limit,
+      include: { participant: true, scannedBy: true },
+    });
+    res.json(
+      rows.map(({ scannedBy, ...passage }) => ({ ...passage, scannedByName: scannedBy.name })),
+    );
+  }),
+);
 
-dashboardRouter.get("/alerts", asyncHandler(async (_req, res) => {
-  res.json(await alerts());
-}));
+dashboardRouter.get(
+  "/alerts",
+  asyncHandler(async (_req, res) => {
+    res.json(await alerts());
+  }),
+);

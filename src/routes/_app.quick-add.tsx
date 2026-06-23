@@ -5,7 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { quickAdd, type QuickAddInput } from "@/services/api/participants";
 import { downloadFile } from "@/services/api/client";
@@ -18,9 +22,23 @@ export const Route = createFileRoute("/_app/quick-add")({
   component: QuickAddPage,
 });
 
-type Member = { fullName: string; email: string; phone: string; organization: string; school: string; roleLabel: string };
+type Member = {
+  fullName: string;
+  email: string;
+  phone: string;
+  organization: string;
+  school: string;
+  roleLabel: string;
+};
 
-const emptyMember = (): Member => ({ fullName: "", email: "", phone: "", organization: "", school: "", roleLabel: "" });
+const emptyMember = (): Member => ({
+  fullName: "",
+  email: "",
+  phone: "",
+  organization: "",
+  school: "",
+  roleLabel: "",
+});
 
 function QuickAddPage() {
   const navigate = useNavigate();
@@ -62,11 +80,16 @@ function QuickAddPage() {
     }
   }, [isCompetition]);
 
-  const submitLabel = useMemo(() => effectiveCount > 1 ? `Créer ${effectiveCount} membres` : "Créer", [effectiveCount]);
+  const submitLabel = useMemo(
+    () => (effectiveCount > 1 ? `Créer ${effectiveCount} membres` : "Créer"),
+    [effectiveCount],
+  );
   const currentMember = members[currentMemberIndex] ?? members[0] ?? emptyMember();
 
   function updateMember(index: number, patch: Partial<Member>) {
-    setMembers((current) => current.map((member, i) => i === index ? { ...member, ...patch } : member));
+    setMembers((current) =>
+      current.map((member, i) => (i === index ? { ...member, ...patch } : member)),
+    );
   }
 
   async function submit(then?: "badge" | "pdf") {
@@ -75,7 +98,8 @@ function QuickAddPage() {
       setCurrentMemberIndex(invalid);
       return toast.error(`Le nom complet du membre ${invalid + 1} est requis`);
     }
-    if (isCompetition && competitionMode === "equipe" && !teamName.trim()) return toast.error("Le nom d'équipe est requis");
+    if (isCompetition && competitionMode === "equipe" && !teamName.trim())
+      return toast.error("Le nom d'équipe est requis");
     setBusy(true);
     try {
       const payloads: QuickAddInput[] = members.map((member) => ({
@@ -95,44 +119,69 @@ function QuickAddPage() {
         competitionCategories,
         expectedPresence,
       }));
-      const result = await quickAdd(payloads.length === 1 ? payloads[0] : { participants: payloads });
+      const result = await quickAdd(
+        payloads.length === 1 ? payloads[0] : { participants: payloads },
+      );
       const created = "items" in result ? result.items : [result];
       toast.success(`${created.length} participant(s) créé(s)`);
       if (then === "badge") navigate({ to: "/badges", search: { id: created[0].id } as any });
-      else if (then === "pdf") await downloadFile(`/badges/${created[0].id}/pdf`, `${created[0].badgeCode}.pdf`);
+      else if (then === "pdf")
+        await downloadFile(`/badges/${created[0].id}/pdf`, `${created[0].badgeCode}.pdf`);
       else navigate({ to: "/participants" });
     } catch (e: any) {
       toast.error(e?.message ?? "Erreur lors de la création");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
-        <div className="text-xs uppercase tracking-widest text-muted-foreground">Création express</div>
+        <div className="text-xs uppercase tracking-widest text-muted-foreground">
+          Création express
+        </div>
         <h1 className="font-display text-3xl font-bold mt-1">Ajout minute</h1>
-        <p className="text-sm text-muted-foreground mt-1">Les champs suivent le modèle fusionné Hackathon / CTF.</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          Les champs suivent le modèle fusionné Hackathon / CTF.
+        </p>
       </div>
 
       <Card className="p-5 sm:p-6 space-y-4">
         <div className="grid sm:grid-cols-2 gap-4">
           <Field label="Type">
-            <Select value={participantType} onValueChange={(v) => setParticipantType(v as ParticipantType)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={participantType}
+              onValueChange={(v) => setParticipantType(v as ParticipantType)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="PARTICIPANT">Participant</SelectItem>
                 <SelectItem value="COACH">Coach</SelectItem>
+                <SelectItem value="JURY">Jury</SelectItem>
                 <SelectItem value="ORGANIZER">Organisation</SelectItem>
                 <SelectItem value="GUEST">Invité</SelectItem>
               </SelectContent>
             </Select>
           </Field>
           <Field label="Catégorie">
-            <Select value={sourceCategory} onValueChange={(v) => setSourceCategory(v as SourceCategory)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+            <Select
+              value={sourceCategory}
+              onValueChange={(v) => setSourceCategory(v as SourceCategory)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
               <SelectContent>
-                {["Hackathon", "CTF", "Coach", "Organisation", "Invité", "Autre"].map((c) =>
-                  <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                {["Hackathon", "CTF", "Coach", "Jury", "Organisation", "Invité", "Autre"].map(
+                  (c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ),
+                )}
               </SelectContent>
             </Select>
           </Field>
@@ -141,8 +190,13 @@ function QuickAddPage() {
         {isCompetition && (
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label="Mode">
-              <Select value={competitionMode} onValueChange={(v) => setCompetitionMode(v as "solo" | "equipe")}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Select
+                value={competitionMode}
+                onValueChange={(v) => setCompetitionMode(v as "solo" | "equipe")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="solo">Solo</SelectItem>
                   <SelectItem value="equipe">Équipe</SelectItem>
@@ -151,7 +205,15 @@ function QuickAddPage() {
             </Field>
             {competitionMode === "equipe" && (
               <Field label="Nombre de membres">
-                <Input type="number" min={2} max={20} value={memberCount} onChange={(e) => setMemberCount(Math.max(2, Math.min(20, Number(e.target.value) || 2)))} />
+                <Input
+                  type="number"
+                  min={2}
+                  max={20}
+                  value={memberCount}
+                  onChange={(e) =>
+                    setMemberCount(Math.max(2, Math.min(20, Number(e.target.value) || 2)))
+                  }
+                />
               </Field>
             )}
           </div>
@@ -159,25 +221,40 @@ function QuickAddPage() {
 
         {competitionMode === "equipe" && isCompetition && (
           <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Équipe *"><Input value={teamName} onChange={(e) => setTeamName(e.target.value)} /></Field>
-            <Field label="Groupe"><Input value={groupName} onChange={(e) => setGroupName(e.target.value)} /></Field>
+            <Field label="Équipe *">
+              <Input value={teamName} onChange={(e) => setTeamName(e.target.value)} />
+            </Field>
+            <Field label="Groupe">
+              <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} />
+            </Field>
           </div>
         )}
 
         {isCompetition && (
           <div className="grid sm:grid-cols-2 gap-4">
             <Field label={sourceCategory === "Hackathon" ? "Thématique" : "Niveau"}>
-              <Input value={competitionLevel} onChange={(e) => setCompetitionLevel(e.target.value)} />
+              <Input
+                value={competitionLevel}
+                onChange={(e) => setCompetitionLevel(e.target.value)}
+              />
             </Field>
             <Field label="Catégories / Spécialités">
-              <Input value={competitionCategories} onChange={(e) => setCompetitionCategories(e.target.value)} />
+              <Input
+                value={competitionCategories}
+                onChange={(e) => setCompetitionCategories(e.target.value)}
+              />
             </Field>
           </div>
         )}
 
         <Field label="Présence prévue">
-          <Select value={expectedPresence} onValueChange={(v) => setExpectedPresence(v as ExpectedPresence)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+          <Select
+            value={expectedPresence}
+            onValueChange={(v) => setExpectedPresence(v as ExpectedPresence)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="BOTH_DAYS">Les deux jours</SelectItem>
               <SelectItem value="MONDAY">Lundi</SelectItem>
@@ -191,7 +268,9 @@ function QuickAddPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-sm font-medium">Membre {currentMemberIndex + 1}</div>
-              <div className="text-xs text-muted-foreground">{currentMemberIndex + 1} / {effectiveCount}</div>
+              <div className="text-xs text-muted-foreground">
+                {currentMemberIndex + 1} / {effectiveCount}
+              </div>
             </div>
             {effectiveCount > 1 && (
               <div className="flex items-center gap-2">
@@ -202,37 +281,78 @@ function QuickAddPage() {
                   disabled={currentMemberIndex === 0}
                   onClick={() => setCurrentMemberIndex((index) => Math.max(0, index - 1))}
                 >
-                  <ChevronLeft className="size-4 mr-1" />Précédent
+                  <ChevronLeft className="size-4 mr-1" />
+                  Précédent
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   disabled={currentMemberIndex >= effectiveCount - 1}
-                  onClick={() => setCurrentMemberIndex((index) => Math.min(effectiveCount - 1, index + 1))}
+                  onClick={() =>
+                    setCurrentMemberIndex((index) => Math.min(effectiveCount - 1, index + 1))
+                  }
                 >
-                  Suivant<ChevronRight className="size-4 ml-1" />
+                  Suivant
+                  <ChevronRight className="size-4 ml-1" />
                 </Button>
               </div>
             )}
           </div>
 
-          <Field label="Nom complet *"><Input value={currentMember.fullName} onChange={(e) => updateMember(currentMemberIndex, { fullName: e.target.value })} /></Field>
+          <Field label="Nom complet *">
+            <Input
+              value={currentMember.fullName}
+              onChange={(e) => updateMember(currentMemberIndex, { fullName: e.target.value })}
+            />
+          </Field>
           <div className="grid sm:grid-cols-2 gap-3">
-            <Field label="Email"><Input type="email" value={currentMember.email} onChange={(e) => updateMember(currentMemberIndex, { email: e.target.value })} /></Field>
-            <Field label="Téléphone"><Input value={currentMember.phone} onChange={(e) => updateMember(currentMemberIndex, { phone: e.target.value })} /></Field>
+            <Field label="Email">
+              <Input
+                type="email"
+                value={currentMember.email}
+                onChange={(e) => updateMember(currentMemberIndex, { email: e.target.value })}
+              />
+            </Field>
+            <Field label="Téléphone">
+              <Input
+                value={currentMember.phone}
+                onChange={(e) => updateMember(currentMemberIndex, { phone: e.target.value })}
+              />
+            </Field>
           </div>
           <div className="grid sm:grid-cols-2 gap-3">
-            <Field label="Organisation / Établissement"><Input value={currentMember.organization} onChange={(e) => updateMember(currentMemberIndex, { organization: e.target.value })} /></Field>
-            <Field label="Formation"><Input value={currentMember.school} onChange={(e) => updateMember(currentMemberIndex, { school: e.target.value })} /></Field>
+            <Field label="Organisation / Établissement">
+              <Input
+                value={currentMember.organization}
+                onChange={(e) => updateMember(currentMemberIndex, { organization: e.target.value })}
+              />
+            </Field>
+            <Field label="Formation">
+              <Input
+                value={currentMember.school}
+                onChange={(e) => updateMember(currentMemberIndex, { school: e.target.value })}
+              />
+            </Field>
           </div>
-          {isCompetition && <Field label="Rôle"><Input value={currentMember.roleLabel} onChange={(e) => updateMember(currentMemberIndex, { roleLabel: e.target.value })} /></Field>}
+          <Field label="Rôle">
+            <Input
+              value={currentMember.roleLabel}
+              onChange={(e) => updateMember(currentMemberIndex, { roleLabel: e.target.value })}
+            />
+          </Field>
         </div>
 
         <div className="flex flex-wrap gap-2 pt-2">
-          <Button disabled={busy} onClick={() => submit()} className="bg-deep">{submitLabel}</Button>
-          <Button disabled={busy} variant="outline" onClick={() => submit("badge")}>Créer + ouvrir badge</Button>
-          <Button disabled={busy} variant="outline" onClick={() => submit("pdf")}>Créer + PDF</Button>
+          <Button disabled={busy} onClick={() => submit()} className="bg-deep">
+            {submitLabel}
+          </Button>
+          <Button disabled={busy} variant="outline" onClick={() => submit("badge")}>
+            Créer + ouvrir badge
+          </Button>
+          <Button disabled={busy} variant="outline" onClick={() => submit("pdf")}>
+            Créer + PDF
+          </Button>
         </div>
       </Card>
     </div>
@@ -240,5 +360,10 @@ function QuickAddPage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>;
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
 }

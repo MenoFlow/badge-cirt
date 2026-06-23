@@ -13,6 +13,7 @@ interface Props {
 const typeLabel: Record<Participant["participantType"], string> = {
   PARTICIPANT: "Participant",
   COACH: "Coach",
+  JURY: "Jury",
   ORGANIZER: "Organisation",
   GUEST: "Invité",
 };
